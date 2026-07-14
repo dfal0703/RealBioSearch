@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_Data:
+    m_SerializedData: []
+  m_GUID: c776f13c06aefd244b8ad9f61fb482a4
+  m_SerializeEntries:
+  - m_GUID: 63a365cf75622c14aa4f18de230fdedb
+    m_Address: Prefabs/Demo_LoadingFadePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a7e7955e6901fbd46b9806e7f4c015dd
+    m_Address: Prefabs/HaareDebugPannel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 4061e740da6300e4b9b73ebbe6884683
+    m_Address: Prefabs/Demo_NoticePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 69b79d2630b62834fb8b71cf0bc47397
+    m_Address: Prefabs/Demo_TitlePanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: fbb6caf799b9eb1418963f9c3b428f60
+    m_Address: Prefabs/Demo_PanelBackground
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: b16664ba0803e194eafa1c6e32447142
+    m_Address: Prefabs/Demo_LoadingPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 472789d2898f45d44bf73393ce452afb
+    m_Address: Prefabs/CoreCanvas
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 9c587f5731acc834db9eca7616b3a621
+    m_Address: Assets/Haare/Demo/Scene/DemoLobbyScene.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 2006f528c48ae9341b4c801ac58937b3
+    m_Address: Assets/Haare/Demo/Scene/DemoTitleScene.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: ef5ec2efb91de2e4ba3361b59f3077fb
+    m_Address: Assets/Haare/Demo/Scene/DemoLoadScene.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 99c9720ab356a0642a771bea13969a05
+    m_Address: Assets/Scenes/ssh.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 5f5fbcea48eb62e4cb093f9cc77db7b2, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 02e526f9f4f2a2645b79495dbdc2bba2, type: 2}
+    - {fileID: 11400000, guid: 7154ab64946b6764a873a66efa0d5b2c, type: 2}
