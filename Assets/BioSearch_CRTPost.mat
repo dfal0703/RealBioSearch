@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: BioSearch_CRTPost
+  m_Shader: {fileID: 4800000, guid: 43beab5c5406de8489287fad3462b5e1, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Aberration: 0.6
+    - _BandSpeed: 0.2
+    - _BandStrength: 0.25
+    - _BandThickness: 0.1
+    - _BurstChance: 0.08
+    - _BurstLen: 0.14
+    - _CornerRadius: 0.08
+    - _Curvature: 0.25
+    - _FlickerBase: 0.005
+    - _FlickerBurst: 0.06
+    - _Gamma: 1.2
+    - _JitterBase: 0.02
+    - _JitterBurst: 0.18
+    - _MaskPixelSize: 1
+    - _MaskStrength: 0.35
+    - _MicroJitterAmp: 0.25
+    - _MicroJitterDuty: 0.35
+    - _MicroJitterFreq: 45
+    - _ScanlineCount: 900
+    - _ScanlineIntensity: 1
+    - _Seed: 13
+    - _TimeScale: 1.2
+    - _Vignette: 0.75
+    m_Colors: []
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
