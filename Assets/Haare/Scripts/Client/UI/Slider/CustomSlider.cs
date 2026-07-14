@@ -18,12 +18,23 @@ namespace Haare.Client.UI
         [SerializeField] private CustomImage background;
         [SerializeField] private CustomImage fill;
         public float Value => _slider.value;
-        
+
+        // CustomText/CustomImage와 동일하게 Constructor()(Awake 시점, 동기)에서 채워야
+        // 외부에서 Awake 직후 곧바로 Setup()을 호출해도(BindEvent 등) NullReferenceException이 나지 않는다.
+        // 예전엔 Initialize()(비동기)에서만 채우고 매번 Setup(0,1,0)으로 강제 리셋해서,
+        // 외부에서 지정한 min/max/value를 나중에 덮어써버리는 문제도 있었다.
+        protected override void Constructor()
+        {
+            base.Constructor();
+            if (_slider == null)
+                _slider = GetComponent<Slider>();
+        }
+
         public override async UniTask Initialize(CancellationToken cts)
         {
             await base.Initialize(cts);
-            _slider = GetComponent<Slider>();
-            Setup(0,1,0);
+            if (_slider == null)
+                _slider = GetComponent<Slider>();
         }
 
         /// <summary>
