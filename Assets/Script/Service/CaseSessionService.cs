@@ -56,11 +56,18 @@ namespace Script.Service
                 await AddLibraryEntry(CaseFileEntryType.Document, "진단 접수 보고서", BuildDiagnosisReport());
             }
 
-            var message = $"검사 요청 수신 - 사례 {CurrentCase.Data.caseId} ({CurrentCase.Data.subjectName})";
-            LogHelper.Log(LogHelper.SERVICE, message);
-            OnLog.OnNext(message);
+            Log($"검사 요청 수신 - 사례 {CurrentCase.Data.caseId} ({CurrentCase.Data.subjectName})");
 
             await base.Initialize(cts);
+        }
+
+        // CLIPanel 등 UI 쪽 시스템 메시지 로그에 한 줄 남기는 공통 진입점 - OnLog를 여기서만
+        // 발행하게 묶어서, 다른 서비스(ExamService 등)가 CaseSessionService 내부 상태를 직접
+        // 안 건드리고도 시스템 메시지를 남길 수 있게 한다.
+        public void Log(string message)
+        {
+            LogHelper.Log(LogHelper.SERVICE, message);
+            OnLog.OnNext(message);
         }
 
         private string BuildDiagnosisReport()
@@ -85,7 +92,7 @@ namespace Script.Service
         // 문제가 있었다(사용자 피드백: "라이브러리가 일회용 데이터가 되게 해줘"). 라이브러리는
         // 이 세션(CurrentCase.Data, 메모리)에만 존재하고 에디터를 다시 플레이하면 사라진다 -
         // 실제 저장이 필요해지면(플레이어블 빌드 단계) 여기 SaveData 호출을 되살리면 된다.
-        public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content)
+        public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content, string subfolder = "")
         {
             if (CurrentCase == null) return UniTask.CompletedTask;
 
@@ -95,7 +102,8 @@ namespace Script.Service
                 type = type,
                 title = title,
                 content = content,
-                timestamp = DateTime.Now.ToString("HH:mm:ss")
+                timestamp = DateTime.Now.ToString("HH:mm:ss"),
+                subfolder = subfolder ?? ""
             };
 
             CurrentCase.Data.library.Add(entry);
@@ -110,14 +118,16 @@ namespace Script.Service
         // 처음 대화가 시작될 때(=아직 그 항목이 없을 때) 비로소 만들어진다 - 라이브러리 UI에서
         // 그 타입의 "폴더"가 그 시점에 처음 나타나는 것도 이걸로 자연히 설명됨(폴더 = 항목이
         // 하나라도 있는 타입).
-        public UniTask AppendToLog(CaseFileEntryType type, string title, string line)
+        public UniTask AppendToLog(CaseFileEntryType type, string title, string line, string subfolder = "")
         {
             if (CurrentCase == null) return UniTask.CompletedTask;
 
-            var existing = CurrentCase.Data.library.FirstOrDefault(e => e.type == type && e.title == title);
+            subfolder ??= "";
+            var existing = CurrentCase.Data.library
+                .FirstOrDefault(e => e.type == type && e.title == title && e.subfolder == subfolder);
             if (existing == null)
             {
-                return AddLibraryEntry(type, title, line);
+                return AddLibraryEntry(type, title, line, subfolder);
             }
 
             existing.content = $"{existing.content}\n{line}";
@@ -143,9 +153,7 @@ namespace Script.Service
             CurrentCase.Data.finalVerdictDraft = verdictDraft;
             CurrentCase.Data.status = CaseStatus.Closed;
 
-            var message = $"사례 {CurrentCase.Data.caseId} 종료 완료";
-            LogHelper.Log(LogHelper.SERVICE, message);
-            OnLog.OnNext(message);
+            Log($"사례 {CurrentCase.Data.caseId} 종료 완료");
 
             return UniTask.CompletedTask;
         }

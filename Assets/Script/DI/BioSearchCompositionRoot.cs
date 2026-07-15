@@ -42,6 +42,10 @@ namespace Script.DI
             // CLIPanel이 [Inject] 필드로 직접 물기 때문에 별도의 즉시 생성 강제가 필요 없다 -
             // CLIPanel이 로드/주입되는 시점에 자동으로 함께 생성된다.
             builder.Register<DialogueService>(Lifetime.Singleton).AsSelf();
+
+            // ExamControlPanel이 [Inject] 필드로 직접 물기 때문에(위와 같은 이유) 별도의 즉시
+            // 생성 강제가 필요 없다.
+            builder.Register<ExamService>(Lifetime.Singleton).AsSelf();
         }
     }
 }

@@ -1,0 +1,57 @@
+using System.Linq;
+using Cysharp.Threading.Tasks;
+using Haare.Client.Routine;
+using Script.Data;
+using VContainer;
+
+namespace Script.Service
+{
+    // 개발 구현 지시서 6장 "4단계 - 핵심 검사 루프". 검사 부위/방식 조합마다 다른 결과를
+    // 돌려주는 것 자체가 핵심 - "검사 결과가 하나의 정답 파일로 제공되는 게 아니라 서로 다른
+    // 형태의 파일을 대조해 판단"(전체 기획 정리.md 9장) + "검사 결과는 정답을 직접 알려주지
+    // 않는다"(개발 구현 지시서 6장). 초기 구현이라 장기 5개/방식 3개로 제한
+    // ("초기 구현에서는 소수의 장기와 검사 방식만 사용").
+    public class ExamService : NativeRoutine
+    {
+        [Inject] private CaseSessionService _caseSessionService;
+
+        public static readonly string[] Organs = { "뇌", "심장", "폐", "위", "피부" };
+        public static readonly string[] Methods = { "관찰 검사", "음향 검사", "촬영·투과 검사" };
+
+        // 결과는 CaseFileEntryType.ExamResult(검사 결과 전용 최상위 폴더)로 라이브러리에
+        // 등록한다 - 처음엔 전체 기획 정리.md 9장의 "문서 파일" 분류에 "검사 결과 보고서"가
+        // 있다고 보고 Document + subfolder(장기별)로 묶었는데, 사용자가 "문서에 넣지 말고
+        // 검사 결과 폴더를 따로 만들어달라"고 명시적으로 요청해서 최상위 폴더 자체를 분리했다
+        // (CaseFile.cs의 CaseFileEntryType 주석 참고). 그래도 실제 사진/파형/녹음을 만드는
+        // 시스템은 아직 없어서(시스템과 콘텐츠 분리 원칙) 내용 자체는 여전히 텍스트 보고서고,
+        // Image/Audio/Numeric으로 등록하면 LibraryPanel에서 "아직 열람 지원 안 함"으로 막힘.
+        // 장기(organ)는 계속 subfolder로 넘겨서 "검사 결과/폐/관찰 검사 결과.txt"처럼 장기별로
+        // 묶는다.
+        //
+        // 강도(intensity)는 파일명에 대괄호로 붙인다(예: "관찰 검사 [중] 결과") - 같은 부위·
+        // 방식을 강도만 바꿔 재검사하면 파일이 구분 안 되고 겹쳐버리는 걸 막는 것과, 사용자
+        // 요청("어떤 강도였는지 잘 표기해줘")을 둘 다 만족. 부위는 폴더 경로가 이미 보여주므로
+        // 파일명에는 안 넣지만, 파일을 열었을 때(NotepadPopup)는 폴더 밖 맥락 없이도 바로
+        // 알 수 있도록 본문 맨 위에 부위/방식/강도를 전부 다시 명시한다 - 지금은 강도가 결과
+        // 자체에 영향을 주지 않지만(5단계에서 실제로 반영될 예정), 그것과 별개로 "무엇을
+        // 실행했는지" 기록 자체는 항상 정확해야 한다.
+        public async UniTask<string> RunExam(string organ, string method, string intensity)
+        {
+            var result = FindResult(organ, method);
+            var title = $"{method} [{intensity}] 결과";
+            var content = $"[검사 부위] {organ}\n[검사 방식] {method}\n[검사 강도] {intensity}\n\n{result}";
+
+            await _caseSessionService.AddLibraryEntry(CaseFileEntryType.ExamResult, title, content, organ);
+            _caseSessionService.Log($"[검사 완료] {organ} - {method} (강도: {intensity}) - 라이브러리에 등록됨");
+
+            return result;
+        }
+
+        private string FindResult(string organ, string method)
+        {
+            var results = _caseSessionService.CurrentDefinition?.examResults;
+            var match = results?.FirstOrDefault(e => e.organ == organ && e.method == method);
+            return match != null ? match.result : "특이 소견 없음. 정상 범위 내.";
+        }
+    }
+}

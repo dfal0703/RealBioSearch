@@ -14,13 +14,21 @@ namespace Script.Data
     // 전체 기획 정리.md 9장 "검사 결과와 파일 시스템"의 4대 분류. Numeric은 수치·그래프 자료용 —
     // 지금은 Document/Dialogue만 실제로 만들고, Audio/Image/Numeric은 그 콘텐츠를 만드는
     // 시스템(녹음/촬영/검사)이 생기는 다음 스테이지에서 채워진다.
+    //
+    // ExamResult는 기획서의 4대 분류엔 없는 다섯 번째 값 - 원래는 "검사 결과 보고서"가 문서
+    // 파일 분류에 속한다고 보고 Document + subfolder(장기별)로 묶었는데, 사용자가 "문서에
+    // 넣지 말고 검사 결과 폴더를 따로 만들어달라"고 명시적으로 요청해서 최상위 폴더 자체를
+    // 분리했다. JsonUtility가 enum을 정수로 직렬화하므로 기존 값 사이에 끼워 넣지 않고 맨
+    // 뒤에 추가 - 나중에 실제 저장(SaveData)을 다시 켜게 되면 중간에 끼워 넣었을 때 기존
+    // 저장 파일의 번호가 밀리는 걸 방지.
     public enum CaseFileEntryType
     {
         Document,
         Dialogue,
         Audio,
         Image,
-        Numeric
+        Numeric,
+        ExamResult
     }
 
     // 사례 라이브러리에 누적되는 자료 한 건. JsonUtility가 다뤄야 해서 전부 public 필드.
@@ -32,6 +40,12 @@ namespace Script.Data
         public string title;
         public string content;
         public string timestamp;
+
+        // type 폴더 밑에 한 단계 더 나누고 싶을 때만 채운다(예: 검사 결과 문서를 장기별로
+        // 묶기 - "폐/관찰 검사 결과.txt"). 빈 문자열이면 type 폴더에 바로 있는 파일.
+        // LibraryPanel이 이 값으로 하위 폴더 행을 만들어준다(사용자 피드백: "경로 좀 명확히
+        // 정리해줘" - 검사 결과가 전부 문서 폴더에 평평하게 쌓이던 문제).
+        public string subfolder = "";
     }
 
     // DataManager.GetModel<T>()가 리플렉션으로 역직렬화하는 순수 DTO. JsonUtility가 다뤄야 해서

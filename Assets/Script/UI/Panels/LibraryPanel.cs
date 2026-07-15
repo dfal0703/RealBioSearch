@@ -13,12 +13,14 @@ using VContainer;
 
 namespace Script.UI.Panels
 {
-    // 화면 구성 "우측 상단" - 검사체에게 첨부된 모든 자료를 실제 파일 탐색기처럼 폴더/파일
-    // 2단계로 열람한다. 폴더는 CaseFileEntryType 하나당 하나씩, 그 타입의 항목이 하나라도
-    // 생기는 순간 비로소 나타난다(예: 첫 대화가 시작돼야 "대화 로그" 폴더가 생김 - 전체 기획
-    // 정리.md 5장/9장 참고). CaseSessionService.OnLibraryUpdated(ReplaySubject)가 부팅 중 이미
-    // 등록된 진단 보고서를 포함해 지금까지 쌓인 자료를 전부 재생해주므로, 이 패널이 늦게
-    // 구독을 시작해도 놓치는 항목이 없다.
+    // 화면 구성 "우측 상단" - 검사체에게 첨부된 모든 자료를 실제 파일 탐색기처럼 열람한다.
+    // 최상위 폴더는 CaseFileEntryType 하나당 하나씩, 그 타입의 항목이 하나라도 생기는 순간
+    // 비로소 나타난다(예: 첫 대화가 시작돼야 "대화 로그" 폴더가 생김 - 전체 기획 정리.md
+    // 5장/9장 참고). 그 안에는 다시 CaseFileEntry.subfolder 기준 하위 폴더(예: 검사 결과를
+    // 장기별로 묶은 "폐/", "심장/")가 있을 수 있다 - 총 최대 유형 폴더 → 하위 폴더 → 파일의
+    // 3단계. CaseSessionService.OnLibraryUpdated(ReplaySubject)가 부팅 중 이미 등록된 진단
+    // 보고서를 포함해 지금까지 쌓인 자료를 전부 재생해주므로, 이 패널이 늦게 구독을 시작해도
+    // 놓치는 항목이 없다.
     [PanelAttribute("Prefabs/UI/Panels/LibraryPanel")]
     public class LibraryPanel : MonoRoutine, ICustomPanel
     {
@@ -37,19 +39,27 @@ namespace Script.UI.Panels
         // BioSearchUIManager를 SceneUIManager로도 등록해두므로 같은 싱글턴이 주입된다.
         [Inject] private BioSearchUIManager _uiManager;
 
-        // 폴더 표시 순서 - 전체 기획 정리.md 9장의 자료 유형 순서(문서 → 대화·오디오 → 이미지 →
-        // 수치·그래프)를 따른다.
+        // 폴더 표시 순서 - 기본은 전체 기획 정리.md 9장의 자료 유형 순서(문서 → 대화·오디오 →
+        // 이미지 → 수치·그래프)를 따르되, ExamResult(검사 결과)는 기획서의 4대 분류엔 없는
+        // 별도 폴더라 문서 바로 뒤에 배치(사용자 요청: "문서에 넣지 말고 검사 결과 폴더를
+        // 따로 만들어달라").
         private static readonly CaseFileEntryType[] FolderOrder =
         {
-            CaseFileEntryType.Document, CaseFileEntryType.Dialogue, CaseFileEntryType.Audio,
-            CaseFileEntryType.Image, CaseFileEntryType.Numeric
+            CaseFileEntryType.Document, CaseFileEntryType.ExamResult, CaseFileEntryType.Dialogue,
+            CaseFileEntryType.Audio, CaseFileEntryType.Image, CaseFileEntryType.Numeric
         };
 
         // 최근 항목이 위로 오도록 항상 리스트 맨 앞에 꽂는다(구현 계획.md Stage 3 7번 항목).
         private readonly List<CaseFileEntry> _entries = new List<CaseFileEntry>();
 
-        // null = 폴더 목록(최상위), 값이 있으면 그 타입 폴더 안(파일 목록) 보는 중.
-        private CaseFileEntryType? _currentFolder;
+        // 탐색 위치를 2단계로 추적한다 - _currentType이 null이면 최상위(유형 폴더 목록),
+        // _currentType만 있고 _currentSubfolder가 null이면 그 유형 폴더 안(하위 폴더 + 그
+        // 유형에 바로 있는 파일), 둘 다 있으면 그 하위 폴더 안(파일만). 예: ExamService가
+        // 검사 결과를 장기별 하위 폴더로 등록해서 "문서/폐/관찰 검사 결과.txt"처럼 보이게 한다
+        // (사용자 피드백: "경로 좀 명확히 정리해줘" - 전엔 검사 결과가 전부 문서 폴더에 평평하게
+        // 쌓였음).
+        private CaseFileEntryType? _currentType;
+        private string _currentSubfolder;
 
         public SceneUIManager uiManager { get; set; }
         public GameObject panel { get; set; }
@@ -93,17 +103,21 @@ namespace Script.UI.Panels
                 Destroy(fileListContent.GetChild(i).gameObject);
             }
 
-            if (_currentFolder == null)
+            if (_currentType == null)
             {
-                RenderFolderList();
+                RenderRootFolderList();
+            }
+            else if (_currentSubfolder == null)
+            {
+                RenderTypeFolder(_currentType.Value);
             }
             else
             {
-                RenderFileList(_currentFolder.Value);
+                RenderSubfolder(_currentType.Value, _currentSubfolder);
             }
         }
 
-        private void RenderFolderList()
+        private void RenderRootFolderList()
         {
             if (emptyLabel != null) emptyLabel.SetActive(_entries.Count == 0);
 
@@ -115,23 +129,60 @@ namespace Script.UI.Panels
                 var folderType = type;
                 CreateRow($"{FolderLabel(folderType)}/", () =>
                 {
-                    _currentFolder = folderType;
+                    _currentType = folderType;
+                    _currentSubfolder = null;
                     RebuildFileList();
                 });
             }
         }
 
-        private void RenderFileList(CaseFileEntryType type)
+        // 유형 폴더 안 - 하위 폴더(예: 장기별)가 있으면 그것부터 보여주고, 하위 폴더 없이 그
+        // 유형에 바로 있는 파일(예: 진단 접수 보고서)은 그 아래에 나열한다. 하위 폴더 표시
+        // 순서는 최근에 생긴 게 위로 오도록 _entries 순서(최신 삽입 우선)를 그대로 따른다.
+        private void RenderTypeFolder(CaseFileEntryType type)
         {
             if (emptyLabel != null) emptyLabel.SetActive(false);
 
             CreateRow(".. (뒤로)", () =>
             {
-                _currentFolder = null;
+                _currentType = null;
                 RebuildFileList();
             });
 
-            foreach (var entry in _entries.Where(e => e.type == type))
+            var entriesOfType = _entries.Where(e => e.type == type).ToList();
+
+            var subfolders = entriesOfType
+                .Where(e => !string.IsNullOrEmpty(e.subfolder))
+                .Select(e => e.subfolder)
+                .Distinct();
+            foreach (var subfolder in subfolders)
+            {
+                var target = subfolder;
+                CreateRow($"{target}/", () =>
+                {
+                    _currentSubfolder = target;
+                    RebuildFileList();
+                });
+            }
+
+            foreach (var entry in entriesOfType.Where(e => string.IsNullOrEmpty(e.subfolder)))
+            {
+                var target = entry;
+                CreateRow(FileName(target), () => OpenEntry(target));
+            }
+        }
+
+        private void RenderSubfolder(CaseFileEntryType type, string subfolder)
+        {
+            if (emptyLabel != null) emptyLabel.SetActive(false);
+
+            CreateRow(".. (뒤로)", () =>
+            {
+                _currentSubfolder = null;
+                RebuildFileList();
+            });
+
+            foreach (var entry in _entries.Where(e => e.type == type && e.subfolder == subfolder))
             {
                 var target = entry;
                 CreateRow(FileName(target), () => OpenEntry(target));
@@ -179,8 +230,8 @@ namespace Script.UI.Panels
         }
 
         // 실제 파일 탐색기 느낌을 내려고 유형에 맞는 확장자를 붙인다 - 지금 실제로 만들어지는
-        // 자료는 Document/Dialogue(둘 다 텍스트)뿐이라 .txt만 붙고, 나머지 유형은 그 콘텐츠를
-        // 만드는 시스템(녹음/촬영/검사)이 생기기 전까지 확장자 없이 표시된다.
+        // 자료는 Document/ExamResult/Dialogue(전부 텍스트)뿐이라 .txt만 붙고, 나머지 유형은 그
+        // 콘텐츠를 만드는 시스템(녹음/촬영)이 생기기 전까지 확장자 없이 표시된다.
         private static string FileName(CaseFileEntry entry)
         {
             return IsTextEntry(entry) ? $"{entry.title}.txt" : entry.title;
@@ -188,7 +239,9 @@ namespace Script.UI.Panels
 
         private static bool IsTextEntry(CaseFileEntry entry)
         {
-            return entry.type == CaseFileEntryType.Document || entry.type == CaseFileEntryType.Dialogue;
+            return entry.type == CaseFileEntryType.Document
+                   || entry.type == CaseFileEntryType.ExamResult
+                   || entry.type == CaseFileEntryType.Dialogue;
         }
 
         private static string FolderLabel(CaseFileEntryType type)
@@ -196,6 +249,7 @@ namespace Script.UI.Panels
             switch (type)
             {
                 case CaseFileEntryType.Document: return "문서";
+                case CaseFileEntryType.ExamResult: return "검사 결과";
                 case CaseFileEntryType.Dialogue: return "대화 로그";
                 case CaseFileEntryType.Audio: return "음성";
                 case CaseFileEntryType.Image: return "이미지";

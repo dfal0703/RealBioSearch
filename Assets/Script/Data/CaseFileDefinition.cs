@@ -16,6 +16,16 @@ namespace Script.Data
         public string response;
     }
 
+    // 검사(부위, 방식) 조합 한 건의 결과 - 개발 구현 지시서 6장 "검사 결과는 정답을 직접
+    // 알려주지 않는다"에 따라 결과문 자체는 힌트일 뿐 "감염됨/안됨"을 명시하지 않는다.
+    [Serializable]
+    public class ExamResultEntry
+    {
+        public string organ;
+        public string method;
+        public string result;
+    }
+
     // 튜토리얼 사례 1건의 "정답지" - 감염 여부/부위 같은 숨겨진 채점 기준. CaseFile과 달리
     // 플레이 중 절대 안 바뀌는 저작 데이터라 DataManager(로컬 세이브 경로)를 안 거치고 매번
     // Addressable에서 직접 읽는다.
@@ -28,6 +38,10 @@ namespace Script.Data
 
         // Stage 3: CLI의 "ask <keyword>" 명령이 참조하는 대화 스크립트.
         public List<DialogueEntry> dialogueScript = new List<DialogueEntry>();
+
+        // Stage 4: ExamService.RunExam(organ, method)가 참조하는 검사 결과표. 정의 안 된
+        // 조합은 ExamService 쪽에서 "특이 소견 없음"으로 처리한다.
+        public List<ExamResultEntry> examResults = new List<ExamResultEntry>();
     }
 
     public static class CaseFileDefinition
