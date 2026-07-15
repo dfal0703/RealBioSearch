@@ -38,6 +38,10 @@ namespace Script.DI
             // NativeRoutine이라 인스펙터 배선이 없음 - BioSearchUIPresenter가 [Inject] 필드로
             // 물고 있어야 부팅 시점에 실제로 생성된다(구현현황 2026-07-15 Stage 2 계획 참고).
             builder.Register<CaseSessionService>(Lifetime.Singleton).AsSelf();
+
+            // CLIPanel이 [Inject] 필드로 직접 물기 때문에 별도의 즉시 생성 강제가 필요 없다 -
+            // CLIPanel이 로드/주입되는 시점에 자동으로 함께 생성된다.
+            builder.Register<DialogueService>(Lifetime.Singleton).AsSelf();
         }
     }
 }

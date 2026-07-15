@@ -1,6 +1,7 @@
 using DG.Tweening;
 using Haare.Client.Routine;
 using Haare.Client.UI;
+using Script.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -190,8 +191,10 @@ namespace Script.Room
 
         protected override void UpdateProcess()
         {
+            // CLIPanel이 자유 텍스트 입력을 받는 동안은 WASD가 타이핑 문자로 쓰여야 하므로
+            // 시점 전환 키로 가로채면 안 된다(CliInputFocus 참고).
             var keyboard = Keyboard.current;
-            if (keyboard != null)
+            if (keyboard != null && !CliInputFocus.IsActive)
             {
                 if (keyboard.wKey.wasPressedThisFrame) TransitionTo(ViewPoint.Computer, computerPoint);
                 else if (keyboard.aKey.wasPressedThisFrame) TransitionTo(ViewPoint.Left, leftPoint);
@@ -230,6 +233,7 @@ namespace Script.Room
             {
                 UpdateHover(null, default);
                 pressedObject = null;
+                CliInputFocus.IsActive = false;
             }
         }
 
@@ -256,6 +260,29 @@ namespace Script.Room
 
             UpdateHover(hit, virtualPosition);
             UpdateClick(hit, virtualPosition, mouse);
+            UpdateScroll(hit, virtualPosition, mouse);
+        }
+
+        // ProcessScreenPointer()가 interactive(=W로 컴퓨터 시점에 들어온 상태)일 때만 호출되므로
+        // 휠 스크롤도 자연히 그 상태에서만 작동한다 - 클릭/호버와 같은 흐름을 그대로 탄다.
+        // ScrollRect(LibraryPanel의 ListText가 이걸 쓴다)가 IScrollHandler를 이미 구현하고 있어서
+        // ExecuteEvents로 넘겨주기만 하면 별도 스크롤 로직이 필요 없다.
+        private void UpdateScroll(GameObject hit, Vector2 screenPoint, Mouse mouse)
+        {
+            if (hit == null) return;
+
+            // Input System의 휠 델타는 OS 단위(윈도우 기준 한 틱 = 120)라, uGUI가 기대하는
+            // "한 틱 ≈ 1" 스케일(레거시 Input.mouseScrollDelta와 동일한 규약)로 맞춰준다.
+            // 체감 속도는 ScrollRect 쪽 Scroll Sensitivity로 추가 조절 가능.
+            var rawScroll = mouse.scroll.ReadValue();
+            if (rawScroll == Vector2.zero) return;
+
+            var eventData = new PointerEventData(EventSystem.current)
+            {
+                position = screenPoint,
+                scrollDelta = rawScroll / 120f
+            };
+            ExecuteEvents.ExecuteHierarchy(hit, eventData, ExecuteEvents.scrollHandler);
         }
 
         // GraphicRaycaster.Raycast()가 내부적으로 하는 것과 같은 일(등록된 그래픽 중 스크린 포인트를

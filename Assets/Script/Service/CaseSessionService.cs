@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Haare.Client.Routine;
@@ -28,6 +30,11 @@ namespace Script.Service
         // 새 구독자에게 지금까지 쌓인 값을 전부 재생해준다.
         public ReplaySubject<string> OnLog { get; } = new ReplaySubject<string>();
 
+        // LibraryPanel이 부팅 순서상 CaseSessionService보다 늦게 구독을 시작하므로(진단 보고서
+        // 자동 등록이 Initialize 중에 바로 일어남) OnLog와 같은 이유로 Subject가 아니라
+        // ReplaySubject를 쓴다 - 그래야 늦게 붙는 구독자도 이미 쌓인 자료를 전부 받는다.
+        public ReplaySubject<CaseFileEntry> OnLibraryUpdated { get; } = new ReplaySubject<CaseFileEntry>();
+
         public override async UniTask Initialize(CancellationToken cts)
         {
             CurrentCase = await _dataManager.GetModel<CaseFile>();
@@ -40,11 +47,13 @@ namespace Script.Service
                 return;
             }
 
-            // 대기 상태로 로드됐다면(최초 접수 직후) 여기서 바로 업무 활성화 처리.
+            // 대기 상태로 로드됐다면(최초 접수 직후) 여기서 바로 업무 활성화 + 진단 보고서를
+            // 라이브러리에 자동 등록한다. status가 이미 InProgress/Closed로 저장돼 있다면
+            // (재접속) 이 블록을 다시 안 타므로 보고서가 중복 등록되지 않는다.
             if (CurrentCase.Data.status == CaseStatus.Waiting)
             {
                 CurrentCase.Data.status = CaseStatus.InProgress;
-                await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
+                await AddLibraryEntry(CaseFileEntryType.Document, "진단 접수 보고서", BuildDiagnosisReport());
             }
 
             var message = $"검사 요청 수신 - 사례 {CurrentCase.Data.caseId} ({CurrentCase.Data.subjectName})";
@@ -52,6 +61,67 @@ namespace Script.Service
             OnLog.OnNext(message);
 
             await base.Initialize(cts);
+        }
+
+        private string BuildDiagnosisReport()
+        {
+            var d = CurrentCase.Data;
+            return $"사례번호: {d.caseId}\n" +
+                   $"이름: {d.subjectName} ({d.subjectGender}, {d.subjectAge}세)\n" +
+                   $"신분: {d.subjectIdentity} / 직업: {d.subjectOccupation}\n" +
+                   $"요청 경위: {d.requestBackground}\n" +
+                   $"기존 질환: {d.existingConditions}\n" +
+                   $"신고된 증상: {d.reportedSymptoms}\n" +
+                   $"최근 행동 이상: {d.recentBehaviorAnomalies}";
+        }
+
+        // 사례 라이브러리를 바꾸는 유일한 진입점(개발 구현 지시서 3단계: "자료는 사례 라이브러리에
+        // 일관되게 누적"). DialogueService(ask 명령)와 위의 진단 보고서 자동 등록이 모두 이걸 통해서만
+        // library를 건드린다.
+        public async UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content)
+        {
+            if (CurrentCase == null) return;
+
+            var entry = new CaseFileEntry
+            {
+                id = Guid.NewGuid().ToString("N"),
+                type = type,
+                title = title,
+                content = content,
+                timestamp = DateTime.Now.ToString("HH:mm:ss")
+            };
+
+            CurrentCase.Data.library.Add(entry);
+            await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
+
+            OnLibraryUpdated.OnNext(entry);
+        }
+
+        // 전체 기획 정리.md 5장: "모든 대화는 자동으로 대화 로그 파일에 기록됩니다" - 대화 한
+        // 번마다 새 라이브러리 항목을 만드는 게 아니라, (type, title)이 같은 기존 항목이 있으면
+        // 그 항목의 content 뒤에 이어 붙인다. 그래서 "대화 로그" 항목은 사례당 하나만 존재하고,
+        // 처음 대화가 시작될 때(=아직 그 항목이 없을 때) 비로소 만들어진다 - 라이브러리 UI에서
+        // 그 타입의 "폴더"가 그 시점에 처음 나타나는 것도 이걸로 자연히 설명됨(폴더 = 항목이
+        // 하나라도 있는 타입).
+        public async UniTask AppendToLog(CaseFileEntryType type, string title, string line)
+        {
+            if (CurrentCase == null) return;
+
+            var existing = CurrentCase.Data.library.FirstOrDefault(e => e.type == type && e.title == title);
+            if (existing == null)
+            {
+                await AddLibraryEntry(type, title, line);
+                return;
+            }
+
+            existing.content = $"{existing.content}\n{line}";
+            existing.timestamp = DateTime.Now.ToString("HH:mm:ss");
+
+            await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
+
+            // 같은 id로 다시 발행 - 구독자(LibraryPanel)는 이미 아는 항목이면 목록에 새로 추가하지
+            // 않고 참조가 갱신됐다는 신호로만 받아들여 다시 그린다.
+            OnLibraryUpdated.OnNext(existing);
         }
 
         // 최종 보고서 제출 처리. 서비스 쪽 상태 전환/저장만 갖춰두고, 실제 제출 버튼 UI 연결은

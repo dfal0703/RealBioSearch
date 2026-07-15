@@ -11,8 +11,31 @@ namespace Script.Data
         Closed
     }
 
+    // 전체 기획 정리.md 9장 "검사 결과와 파일 시스템"의 4대 분류. Numeric은 수치·그래프 자료용 —
+    // 지금은 Document/Dialogue만 실제로 만들고, Audio/Image/Numeric은 그 콘텐츠를 만드는
+    // 시스템(녹음/촬영/검사)이 생기는 다음 스테이지에서 채워진다.
+    public enum CaseFileEntryType
+    {
+        Document,
+        Dialogue,
+        Audio,
+        Image,
+        Numeric
+    }
+
+    // 사례 라이브러리에 누적되는 자료 한 건. JsonUtility가 다뤄야 해서 전부 public 필드.
+    [Serializable]
+    public class CaseFileEntry
+    {
+        public string id;
+        public CaseFileEntryType type;
+        public string title;
+        public string content;
+        public string timestamp;
+    }
+
     // DataManager.GetModel<T>()가 리플렉션으로 역직렬화하는 순수 DTO. JsonUtility가 다뤄야 해서
-    // 전부 public 필드 + 단순 타입만 사용한다(딕셔너리 금지, 리스트는 문자열 리스트로만).
+    // 전부 public 필드 + 단순 타입만 사용한다(딕셔너리 금지).
     [Serializable]
     public class CaseFileData : IData
     {
@@ -31,10 +54,11 @@ namespace Script.Data
 
         public CaseStatus status;
 
-        // "제출된 무고 증명 자료"를 포함해, 사례에 붙는 파일들은 전부 여기로 - 대화 로그
-        // 파일/음성/이미지 등 실제 내용은 Stage 3에서 채워짐, 지금은 파일명/설명 문자열만.
-        public List<string> attachedFiles = new List<string>();
-        public List<string> dialogueLog = new List<string>();
+        // 사례에 쌓이는 모든 자료(진단 보고서/대화 로그/추후 음성·이미지·수치)는 전부 여기 하나로
+        // 통합한다 - "자료는 사례 라이브러리에 일관되게 누적"(개발 구현 지시서 3단계 완료 기준)
+        // 요구상 소스를 둘로 나눠두면 어긋나서, Stage 2의 attachedFiles/dialogueLog를 이걸로
+        // 대체했다.
+        public List<CaseFileEntry> library = new List<CaseFileEntry>();
 
         public string finalVerdictDraft;
     }

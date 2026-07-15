@@ -10,7 +10,6 @@
   "reportedSymptoms": "불규칙한 기침, 야간 발한",
   "recentBehaviorAnomalies": "최근 며칠간 대화 중 말수가 줄고 시선을 피함",
   "status": 0,
-  "attachedFiles": [],
-  "dialogueLog": [],
+  "library": [],
   "finalVerdictDraft": ""
 }

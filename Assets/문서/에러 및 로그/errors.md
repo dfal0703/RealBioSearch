@@ -1,3 +1,2 @@
-Concave Mesh Colliders are not supported when used with dynamic Rigidbody GameObjects.
-Either make the Mesh Collider convex, or make the Rigidbody kinematic. Scene hierarchy path "Table/CRTMonitor/screenON", Mesh asset path "Assets/Pekdata/PekdataCRTMonitor/Gfx/Mesh/CRTMonitorMesh.fbx", Mesh name "screenON"
+Assets\Script\UI\Panels\CLIPanel.cs(129,45): error CS0246: The type or namespace name 'IMECompositionString' could not be found (are you missing a using directive or an assembly reference?)
 
