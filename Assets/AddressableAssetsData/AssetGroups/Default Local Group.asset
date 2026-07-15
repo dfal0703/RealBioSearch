@@ -61,6 +61,34 @@ MonoBehaviour:
     m_Address: Assets/Scenes/ssh.unity
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 1ca27ea61040494c8233033e45cea343
+    m_Address: Prefabs/UI/Panels/SubjectMonitorPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: db7d9a46cd1449f696f69d8057e5b659
+    m_Address: Prefabs/UI/Panels/VisualMemoPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a61a52be08154103a3639ae74faadf5f
+    m_Address: Prefabs/UI/Panels/HealthStatusPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: fee854aca2c348ce874b9c770b9ea8b9
+    m_Address: Prefabs/UI/Panels/FinalReportPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 235cd09da6ab4baca865904f89d194d3
+    m_Address: Prefabs/UI/Panels/ExamControlPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 138aa92b882a49159d7cc494146b3a12
+    m_Address: Prefabs/UI/Panels/LibraryPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 4bc6bbe06c1640dea69bab58dc98c982
+    m_Address: Prefabs/UI/Panels/CLIPanel
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 5f5fbcea48eb62e4cb093f9cc77db7b2, type: 2}
   m_SchemaSet:

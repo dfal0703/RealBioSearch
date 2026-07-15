@@ -160,10 +160,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a808861af6b44e2893fb672375a14bb2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
+  bioSearchUIManagerPrefab: {fileID: 100000006, guid: 8da0bcde56ad401b8587f5be134cd08c, type: 3}
   parentReference:
-    TypeName: 
+    TypeName:
   autoRun: 1
   autoInjectGameObjects: []
 --- !u!4 &201952016
@@ -973,7 +974,6 @@ MonoBehaviour:
   computerPoint: {fileID: 900000022}
   leftPoint: {fileID: 900000032}
   rightPoint: {fileID: 900000042}
-  computerCanvasPrefab: {fileID: 100000001, guid: 8da0bcde56ad401b8587f5be134cd08c, type: 3}
   computerScreenCamera: {fileID: 900000103}
   screenRenderer: {fileID: 900000501}
   screenRTWidth: 1024

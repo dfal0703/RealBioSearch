@@ -1,4 +1,7 @@
+using Haare.Client.UI;
 using Script.Room;
+using Script.UI;
+using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
@@ -11,12 +14,25 @@ namespace Script.DI
     // 다시 등록하면 루트 스코프와 별개의 인스턴스가 생겨버린다.
     public class BioSearchCompositionRoot : LifetimeScope
     {
+        [SerializeField] private BioSearchUIManager bioSearchUIManagerPrefab;
+
         protected override void Configure(IContainerBuilder builder)
         {
             // 씬에 배치된 ComputerViewController를 DI 그래프에 편입시켜, 앞으로 다른 서비스가
-            // FindObjectOfType 대신 [Inject]로 받을 수 있게 한다. 카메라 포인트/캔버스 같은
-            // 공간 참조는 여전히 Inspector 배선이 필요 — DI가 그것까지 대신해주진 않는다.
+            // FindObjectOfType 대신 [Inject]로 받을 수 있게 한다. 카메라 포인트 같은 공간 참조는
+            // 여전히 Inspector 배선이 필요 — DI가 그것까지 대신해주진 않는다.
             builder.RegisterComponentInHierarchy<ComputerViewController>();
+
+            // ComputerScreenCanvas(=BioSearchUIManager) 프리팹은 씬에 미리 두지 않고 여기서 직접
+            // Instantiate+등록한다 - CoreLifetimeScope가 CoreUIManager를 RegisterComponentInNewPrefab으로
+            // 등록하는 것과 동일한 패턴. RegisterComponentInHierarchy를 쓰지 않는 이유: LifetimeScope.Awake()는
+            // [DefaultExecutionOrder(-5000)]라 일반 MonoBehaviour(ComputerViewController 포함)보다 먼저
+            // 실행되므로, "실행 시점에 생성되는" 컴포넌트를 씬 하이어라키에서 찾는 방식은 시점상 성립하지 않는다.
+            builder.RegisterComponentInNewPrefab(bioSearchUIManagerPrefab, Lifetime.Singleton)
+                .As<SceneUIManager>()
+                .AsSelf();
+
+            builder.RegisterEntryPoint<BioSearchUIPresenter>();
         }
     }
 }

@@ -1,13 +1,15 @@
 using DG.Tweening;
 using Haare.Client.Routine;
+using Haare.Client.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using VContainer;
 
 namespace Script.Room
 {
     // WASD로 방(3D)과 컴퓨터 화면(2D 캔버스) 사이를 "프레디의 피자가게 4"식 4포인트 카메라 전환으로 오간다.
-    // 인스펙터에 카메라 포인트/캔버스 참조를 노출해야 하므로 NativeRoutine이 아닌 MonoRoutine(MonoBehaviour)을 사용한다.
+    // 인스펙터에 카메라 포인트 참조를 노출해야 하므로 NativeRoutine이 아닌 MonoRoutine(MonoBehaviour)을 사용한다.
     public class ComputerViewController : MonoRoutine
     {
         private enum ViewPoint
@@ -23,7 +25,6 @@ namespace Script.Room
         [SerializeField] private Transform leftPoint;
         [SerializeField] private Transform rightPoint;
 
-        [SerializeField] private GameObject computerCanvasPrefab;
         [SerializeField] private Camera computerScreenCamera;
         [SerializeField] private Renderer screenRenderer;
 
@@ -40,17 +41,19 @@ namespace Script.Room
         private Sequence activeTransition;
         private RenderTexture screenRT;
 
+        // ComputerScreenCanvas(=BioSearchUIManager) 프리팹은 이제 BioSearchCompositionRoot가
+        // RegisterComponentInNewPrefab으로 직접 Instantiate+등록한다. 여긴 같은 인스턴스를
+        // SceneUIManager 타입으로 주입받아 Canvas/GraphicRaycaster만 꺼내 쓴다 - 캔버스를
+        // 여기서 또 Instantiate하면 인스턴스가 두 개가 되어버린다.
+        [Inject]
+        private void Construct(SceneUIManager sceneUiManager)
+        {
+            computerCanvas = sceneUiManager.GetComponent<Canvas>();
+            computerRaycaster = sceneUiManager.GetComponent<GraphicRaycaster>();
+        }
+
         protected override void Constructor()
         {
-            // 캔버스는 씬에 미리 박아두지 않고 프리팹으로 관리한다. 여러 방/터미널에서
-            // 재사용하거나 프리팹만 교체해서 화면 UI를 바꿀 수 있도록 실행 시점에 생성한다.
-            if (computerCanvasPrefab != null)
-            {
-                var canvasInstance = Instantiate(computerCanvasPrefab);
-                computerCanvas = canvasInstance.GetComponent<Canvas>();
-                computerRaycaster = canvasInstance.GetComponent<GraphicRaycaster>();
-            }
-
             // RenderTexture를 .renderTexture 에셋으로 미리 구워두면 Unity 6 URP Render Graph가
             // 깊이/포맷 조합에 따라 "Invalid imported texture" 예외를 매 프레임 던지는 경우가 있어
             // (에디터에서 만든 것과 손으로 구성한 에셋의 내부 필드가 완전히 같지 않으면 발생),
