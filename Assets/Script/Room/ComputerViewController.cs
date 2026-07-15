@@ -23,8 +23,7 @@ namespace Script.Room
         [SerializeField] private Transform leftPoint;
         [SerializeField] private Transform rightPoint;
 
-        [SerializeField] private Canvas computerCanvas;
-        [SerializeField] private GraphicRaycaster computerRaycaster;
+        [SerializeField] private GameObject computerCanvasPrefab;
         [SerializeField] private Camera computerScreenCamera;
         [SerializeField] private Renderer screenRenderer;
 
@@ -34,12 +33,24 @@ namespace Script.Room
         [SerializeField] private float transitionDuration = 0.6f;
         [SerializeField] private Ease transitionEase = Ease.InOutQuad;
 
+        private Canvas computerCanvas;
+        private GraphicRaycaster computerRaycaster;
+
         private ViewPoint currentPoint = ViewPoint.Center;
         private Sequence activeTransition;
         private RenderTexture screenRT;
 
         protected override void Constructor()
         {
+            // 캔버스는 씬에 미리 박아두지 않고 프리팹으로 관리한다. 여러 방/터미널에서
+            // 재사용하거나 프리팹만 교체해서 화면 UI를 바꿀 수 있도록 실행 시점에 생성한다.
+            if (computerCanvasPrefab != null)
+            {
+                var canvasInstance = Instantiate(computerCanvasPrefab);
+                computerCanvas = canvasInstance.GetComponent<Canvas>();
+                computerRaycaster = canvasInstance.GetComponent<GraphicRaycaster>();
+            }
+
             // RenderTexture를 .renderTexture 에셋으로 미리 구워두면 Unity 6 URP Render Graph가
             // 깊이/포맷 조합에 따라 "Invalid imported texture" 예외를 매 프레임 던지는 경우가 있어
             // (에디터에서 만든 것과 손으로 구성한 에셋의 내부 필드가 완전히 같지 않으면 발생),
