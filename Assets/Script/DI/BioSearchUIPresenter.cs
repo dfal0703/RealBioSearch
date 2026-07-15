@@ -2,6 +2,7 @@ using Cysharp.Threading.Tasks;
 using Haare.Client.Core.DI;
 using Haare.Client.UI;
 using Haare.Util.Logger;
+using Script.Service;
 using Script.UI;
 using Script.UI.Panels;
 using UnityEngine;
@@ -17,6 +18,11 @@ namespace Script.DI
         // 패널이 어디에 얼마나 크게 배치되는지는 여기가 아니라 ComputerScreenCanvas 프리팹의
         // BioSearchUIManager가 들고 있는 슬롯 RectTransform들이 정한다(인스펙터에서 조절).
         [Inject] private BioSearchUIManager _uiManager;
+
+        // NativeRoutine이라 아무도 안 물어보면 생성 자체가 안 된다 - 여기서 필드로 물고 있는 게
+        // Stage 2에서 CaseSessionService를 부팅 시점에 강제로 생성시키는 트리거다(사용 안 해도
+        // 필드 자체가 목적이라 CS0169 경고 대상은 아님 - VContainer가 채워줌).
+        [Inject] private CaseSessionService _caseSessionService;
 
         public override void PostInitialize()
         {
@@ -38,9 +44,11 @@ namespace Script.DI
             LogHelper.Log(LogHelper.FRAMEWORK, "BioSearchUIPresenter boot sequence complete");
         }
 
+        // resolver를 넘기는 오버로드를 써서 패널 인스턴스에도 [Inject]가 먹히게 한다
+        // (기본 오버로드는 resolver.Inject(panel)을 안 불러서 지금까지 패널은 DI를 못 받았음).
         private async UniTask OpenStatic<T>(RectTransform slot) where T : Component, ICustomPanel
         {
-            await _sceneUiManager.LoadPanel<T>(null, false, false);
+            await _sceneUiManager.LoadPanel<T>(_resolver, null, false, false);
             var panel = _sceneUiManager.RentPanel<T>();
             FillSlot(panel, slot);
             panel.OpenPanel();

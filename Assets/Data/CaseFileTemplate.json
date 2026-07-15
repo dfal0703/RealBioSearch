@@ -1,0 +1,16 @@
+{
+  "caseId": "CASE-001",
+  "subjectName": "김도윤",
+  "subjectGender": "남성",
+  "subjectAge": "34",
+  "subjectIdentity": "지역 주민",
+  "subjectOccupation": "부두 노동자",
+  "requestBackground": "동료 신고로 격리 후 정밀 검사 요청",
+  "existingConditions": "특이사항 없음",
+  "reportedSymptoms": "불규칙한 기침, 야간 발한",
+  "recentBehaviorAnomalies": "최근 며칠간 대화 중 말수가 줄고 시선을 피함",
+  "status": 0,
+  "attachedFiles": [],
+  "dialogueLog": [],
+  "finalVerdictDraft": ""
+}

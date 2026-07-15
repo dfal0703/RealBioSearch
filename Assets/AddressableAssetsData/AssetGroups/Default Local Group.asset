@@ -89,6 +89,14 @@ MonoBehaviour:
     m_Address: Prefabs/UI/Panels/CLIPanel
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 1c9a6531845e4207a98b58148b4c531c
+    m_Address: Data/CaseFileTemplate
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: a8b6139de35a4550b1859affd6fc7fa0
+    m_Address: Data/CaseFileDefinition
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 5f5fbcea48eb62e4cb093f9cc77db7b2, type: 2}
   m_SchemaSet:
