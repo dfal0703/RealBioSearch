@@ -24,12 +24,18 @@ namespace Script.UI.Panels
     {
         [SerializeField] private RectTransform fileListContent;
         [SerializeField] private GameObject emptyLabel;
-        [SerializeField] private NotepadPopup notepadPopup;
         [SerializeField] private TMP_FontAsset rowFont;
         [SerializeField] private Color rowColor = new Color(0.75f, 0.85f, 0.8f, 1f);
         [SerializeField] private float rowHeight = 28f;
 
         [Inject] private CaseSessionService _caseSessionService;
+
+        // NotepadPopup은 더 이상 이 패널 프리팹의 자식이 아니다 - LibraryPanel의 좁은 사분면
+        // 안에 갇히지 않고 화면 전체 위에 뜨도록 ComputerScreenCanvas 쪽 오버레이로 옮겼다.
+        // 여러 개를 동시에 열 수 있어야 해서 파일을 열 때마다 BioSearchUIManager.
+        // SpawnNotepadPopup()으로 새 인스턴스를 하나씩 만든다. BioSearchCompositionRoot가
+        // BioSearchUIManager를 SceneUIManager로도 등록해두므로 같은 싱글턴이 주입된다.
+        [Inject] private BioSearchUIManager _uiManager;
 
         // 폴더 표시 순서 - 전체 기획 정리.md 9장의 자료 유형 순서(문서 → 대화·오디오 → 이미지 →
         // 수치·그래프)를 따른다.
@@ -200,10 +206,11 @@ namespace Script.UI.Panels
 
         private void OpenEntry(CaseFileEntry entry)
         {
-            if (notepadPopup == null) return;
+            var popup = _uiManager != null ? _uiManager.SpawnNotepadPopup() : null;
+            if (popup == null) return;
 
             var content = IsTextEntry(entry) ? entry.content : "이 파일 형식은 아직 열람을 지원하지 않습니다.";
-            notepadPopup.Open(FileName(entry), content);
+            popup.Open(FileName(entry), content);
         }
     }
 }

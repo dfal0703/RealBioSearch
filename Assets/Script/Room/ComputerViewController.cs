@@ -57,6 +57,8 @@ namespace Script.Room
         private bool interactive;
         private GameObject hoveredObject;
         private GameObject pressedObject;
+        private GameObject draggedObject;
+        private Vector2 lastDragVirtualPosition;
 
         // ComputerScreenCanvas(=BioSearchUIManager) 프리팹은 이제 BioSearchCompositionRoot가
         // RegisterComponentInNewPrefab으로 직접 Instantiate+등록한다. 여긴 같은 인스턴스를
@@ -261,6 +263,41 @@ namespace Script.Room
             UpdateHover(hit, virtualPosition);
             UpdateClick(hit, virtualPosition, mouse);
             UpdateScroll(hit, virtualPosition, mouse);
+            UpdateDrag(hitScreen, hit, virtualPosition, mouse);
+        }
+
+        // 팝업 제목표시줄(PopupDragHandler)처럼 눌러서 끄는 UI를 지원한다. 처음 누른 프레임의
+        // 히트 오브젝트를 기억해두고, 버튼을 떼기 전까지는 마우스가 어디를 지나든(다른 그래픽
+        // 위여도) 계속 그 오브젝트에만 델타를 흘려보낸다 - 표준 드래그 동작과 동일.
+        private void UpdateDrag(bool hitScreen, GameObject hit, Vector2 screenPoint, Mouse mouse)
+        {
+            if (mouse.leftButton.wasPressedThisFrame)
+            {
+                draggedObject = hitScreen ? hit : null;
+                lastDragVirtualPosition = screenPoint;
+                return;
+            }
+
+            if (!mouse.leftButton.isPressed)
+            {
+                draggedObject = null;
+                return;
+            }
+
+            if (draggedObject == null || !hitScreen)
+            {
+                // 드래그 중 화면 메쉬 밖으로 커서가 잠깐 벗어나도, 돌아왔을 때 그 사이의 큰 점프를
+                // 델타로 흘려보내지 않도록 기준 위치만 다시 맞춰준다.
+                if (hitScreen) lastDragVirtualPosition = screenPoint;
+                return;
+            }
+
+            var delta = screenPoint - lastDragVirtualPosition;
+            lastDragVirtualPosition = screenPoint;
+            if (delta == Vector2.zero) return;
+
+            var eventData = new PointerEventData(EventSystem.current) { position = screenPoint, delta = delta };
+            ExecuteEvents.ExecuteHierarchy(draggedObject, eventData, ExecuteEvents.dragHandler);
         }
 
         // ProcessScreenPointer()가 interactive(=W로 컴퓨터 시점에 들어온 상태)일 때만 호출되므로
