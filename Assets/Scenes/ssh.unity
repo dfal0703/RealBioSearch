@@ -160,13 +160,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a808861af6b44e2893fb672375a14bb2, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  bioSearchUIManagerPrefab: {fileID: 100000006, guid: 8da0bcde56ad401b8587f5be134cd08c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   parentReference:
-    TypeName:
+    TypeName: 
   autoRun: 1
   autoInjectGameObjects: []
+  bioSearchUIManagerPrefab: {fileID: 100000006, guid: 8da0bcde56ad401b8587f5be134cd08c, type: 3}
 --- !u!4 &201952016
 Transform:
   m_ObjectHideFlags: 0
@@ -469,7 +469,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4948899196415192, guid: 118d794af50d44affb397ac6d1b6a89b, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.2
+      value: -0.273
       objectReference: {fileID: 0}
     - target: {fileID: 4948899196415192, guid: 118d794af50d44affb397ac6d1b6a89b, type: 3}
       propertyPath: m_LocalRotation.w
@@ -731,7 +731,7 @@ Transform:
   m_GameObject: {fileID: 900000011}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -2.25}
+  m_LocalPosition: {x: 0, y: 0.75, z: -1.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -762,7 +762,7 @@ Transform:
   m_GameObject: {fileID: 900000021}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.02, y: 0.77, z: 0.05}
+  m_LocalPosition: {x: 0, y: 0.746, z: -0.177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -793,7 +793,7 @@ Transform:
   m_GameObject: {fileID: 900000031}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.3826834, z: 0, w: 0.9238795}
-  m_LocalPosition: {x: 0, y: 1, z: -2.25}
+  m_LocalPosition: {x: 0, y: 0.75, z: -1.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -824,7 +824,7 @@ Transform:
   m_GameObject: {fileID: 900000041}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.3826834, z: 0, w: 0.9238795}
-  m_LocalPosition: {x: 0, y: 1, z: -2.25}
+  m_LocalPosition: {x: 0, y: 0.75, z: -1.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -976,6 +976,7 @@ MonoBehaviour:
   rightPoint: {fileID: 900000042}
   computerScreenCamera: {fileID: 900000103}
   screenRenderer: {fileID: 900000501}
+  screenCollider: {fileID: 900000502}
   screenRTWidth: 1024
   screenRTHeight: 768
   transitionDuration: 0.6
@@ -983,6 +984,11 @@ MonoBehaviour:
 --- !u!23 &900000501 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 23499735371080416, guid: 118d794af50d44affb397ac6d1b6a89b, type: 3}
+  m_PrefabInstance: {fileID: 662978493}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &900000502 stripped
+MeshCollider:
+  m_CorrespondingSourceObject: {fileID: 65888812345678901, guid: 118d794af50d44affb397ac6d1b6a89b, type: 3}
   m_PrefabInstance: {fileID: 662978493}
   m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807

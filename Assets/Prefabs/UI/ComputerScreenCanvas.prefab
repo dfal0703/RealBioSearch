@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 100000002}
   - component: {fileID: 100000003}
   - component: {fileID: 100000004}
-  - component: {fileID: 100000005}
   - component: {fileID: 100000006}
   m_Layer: 5
   m_Name: ComputerScreenCanvas
@@ -79,7 +78,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 1920, y: 1080}
+  m_ReferenceResolution: {x: 1024, y: 768}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
@@ -87,7 +86,7 @@ MonoBehaviour:
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
   m_PresetInfoIsWorld: 0
---- !u!114 &100000005
+--- !u!114 &100000006
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -96,14 +95,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 100000001}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Script: {fileID: 11500000, guid: e3fd9530ba3845c8b3b32b322bc83377, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  m_IgnoreReversedGraphics: 0
-  m_BlockingObjects: 0
-  m_BlockingMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
+  ILoadedScene: 0
+  safePannelRect: {fileID: 100000032}
 --- !u!1 &100000011
 GameObject:
   m_ObjectHideFlags: 0
@@ -179,20 +175,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &100000006
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e3fd9530ba3845c8b3b32b322bc83377, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  ILoadedScene: 0
-  safePannelRect: {fileID: 100000032}
 --- !u!1 &100000031
 GameObject:
   m_ObjectHideFlags: 0
