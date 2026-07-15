@@ -78,9 +78,16 @@ namespace Script.Service
         // 사례 라이브러리를 바꾸는 유일한 진입점(개발 구현 지시서 3단계: "자료는 사례 라이브러리에
         // 일관되게 누적"). DialogueService(ask 명령)와 위의 진단 보고서 자동 등록이 모두 이걸 통해서만
         // library를 건드린다.
-        public async UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content)
+        //
+        // 의도적으로 로컬 저장(_dataManager.SaveData)을 안 한다 - 아직 튜토리얼 사례 하나로
+        // 반복 테스트하는 단계라, 세션마다 쌓인 질문/답변이 Application.persistentDataPath의
+        // CaseFile.json에 영구히 누적되면서 다음 플레이 때도 이전 테스트 내용이 그대로 남는
+        // 문제가 있었다(사용자 피드백: "라이브러리가 일회용 데이터가 되게 해줘"). 라이브러리는
+        // 이 세션(CurrentCase.Data, 메모리)에만 존재하고 에디터를 다시 플레이하면 사라진다 -
+        // 실제 저장이 필요해지면(플레이어블 빌드 단계) 여기 SaveData 호출을 되살리면 된다.
+        public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content)
         {
-            if (CurrentCase == null) return;
+            if (CurrentCase == null) return UniTask.CompletedTask;
 
             var entry = new CaseFileEntry
             {
@@ -92,9 +99,9 @@ namespace Script.Service
             };
 
             CurrentCase.Data.library.Add(entry);
-            await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
-
             OnLibraryUpdated.OnNext(entry);
+
+            return UniTask.CompletedTask;
         }
 
         // 전체 기획 정리.md 5장: "모든 대화는 자동으로 대화 로그 파일에 기록됩니다" - 대화 한
@@ -103,41 +110,44 @@ namespace Script.Service
         // 처음 대화가 시작될 때(=아직 그 항목이 없을 때) 비로소 만들어진다 - 라이브러리 UI에서
         // 그 타입의 "폴더"가 그 시점에 처음 나타나는 것도 이걸로 자연히 설명됨(폴더 = 항목이
         // 하나라도 있는 타입).
-        public async UniTask AppendToLog(CaseFileEntryType type, string title, string line)
+        public UniTask AppendToLog(CaseFileEntryType type, string title, string line)
         {
-            if (CurrentCase == null) return;
+            if (CurrentCase == null) return UniTask.CompletedTask;
 
             var existing = CurrentCase.Data.library.FirstOrDefault(e => e.type == type && e.title == title);
             if (existing == null)
             {
-                await AddLibraryEntry(type, title, line);
-                return;
+                return AddLibraryEntry(type, title, line);
             }
 
             existing.content = $"{existing.content}\n{line}";
             existing.timestamp = DateTime.Now.ToString("HH:mm:ss");
 
-            await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
-
             // 같은 id로 다시 발행 - 구독자(LibraryPanel)는 이미 아는 항목이면 목록에 새로 추가하지
-            // 않고 참조가 갱신됐다는 신호로만 받아들여 다시 그린다.
+            // 않고 참조가 갱신됐다는 신호로만 받아들여 다시 그린다. (저장은 위 AddLibraryEntry와
+            // 같은 이유로 의도적으로 안 함 - "일회용 데이터" 참고)
             OnLibraryUpdated.OnNext(existing);
+
+            return UniTask.CompletedTask;
         }
 
-        // 최종 보고서 제출 처리. 서비스 쪽 상태 전환/저장만 갖춰두고, 실제 제출 버튼 UI 연결은
-        // FinalReportPanel이 아직 플레이스홀더라 다음 기능 단위로 미룬다.
-        public async UniTask CompleteCase(string verdictDraft)
+        // 최종 보고서 제출 처리. 서비스 쪽 상태 전환만 갖춰두고, 실제 제출 버튼 UI 연결은
+        // FinalReportPanel이 아직 플레이스홀더라 다음 기능 단위로 미룬다. 저장은 다른 라이브러리
+        // 메서드와 같은 이유로 의도적으로 안 함(위 AddLibraryEntry 주석 참고) - 안 그러면 한 번
+        // 테스트로 "Closed"가 영구히 저장돼서 다음 플레이 때 재시작이 아니라 이미 끝난 사례로
+        // 시작해버린다.
+        public UniTask CompleteCase(string verdictDraft)
         {
-            if (CurrentCase == null) return;
+            if (CurrentCase == null) return UniTask.CompletedTask;
 
             CurrentCase.Data.finalVerdictDraft = verdictDraft;
             CurrentCase.Data.status = CaseStatus.Closed;
 
-            await _dataManager.SaveData<CaseFile, CaseFileData>(CurrentCase, CurrentCase.Data);
-
-            var message = $"사례 {CurrentCase.Data.caseId} 종료 및 저장 완료";
+            var message = $"사례 {CurrentCase.Data.caseId} 종료 완료";
             LogHelper.Log(LogHelper.SERVICE, message);
             OnLog.OnNext(message);
+
+            return UniTask.CompletedTask;
         }
     }
 }

@@ -11,6 +11,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.UI;
 using VContainer;
 
 namespace Script.UI.Panels
@@ -22,6 +23,7 @@ namespace Script.UI.Panels
     public class CLIPanel : MonoRoutine, ICustomPanel, IPointerClickHandler
     {
         [SerializeField] private TMP_Text logText;
+        [SerializeField] private ScrollRect logScrollRect;
         [SerializeField] private TMP_Text inputLineText;
         [SerializeField] private GameObject autocompleteRoot;
         [SerializeField] private TMP_Text autocompleteText;
@@ -105,6 +107,16 @@ namespace Script.UI.Panels
             {
                 _imeWasActive = CliInputFocus.IsActive;
                 keyboard.SetIMEEnabled(_imeWasActive);
+
+                // New Input System의 SetIMEEnabled만으로는 한/영 전환 키 자체가 OS로 안 넘어가는
+                // 문제가 있었음(같은 PC의 다른 유니티 프로젝트와 비교해서 확인). 그 프로젝트는
+                // TMP_InputField를 쓰는데, TMP_InputField.ActivateInputField()가 내부적으로
+                // 레거시 UnityEngine.Input.imeCompositionMode도 같이 켠다(BaseInput.cs -
+                // "Input.imeCompositionMode = value") - New/레거시 두 API가 서로 다른 네이티브
+                // 경로를 타는 것으로 보여 여기서도 레거시 쪽을 같이 켜준다. Active Input
+                // Handling이 "Both"여야 레거시 Input 클래스가 동작한다(ProjectSettings 확인 완료).
+                Input.imeCompositionMode = _imeWasActive ? IMECompositionMode.On : IMECompositionMode.Auto;
+
                 if (!_imeWasActive) ClearSuggestions();
             }
 
@@ -309,6 +321,13 @@ namespace Script.UI.Panels
         {
             if (logText == null) return;
             logText.text += $"\n{message}";
+
+            if (logScrollRect == null) return;
+            // ContentSizeFitter가 새 텍스트 높이만큼 LogText를 다시 늘리는 레이아웃 패스가
+            // 이번 프레임에 아직 안 끝났을 수 있어서, 강제로 캔버스를 갱신한 다음에 맨 아래로
+            // 스크롤해야 최신 줄이 실제로 보이는 위치로 맞아떨어진다.
+            Canvas.ForceUpdateCanvases();
+            logScrollRect.verticalNormalizedPosition = 0f;
         }
     }
 }
