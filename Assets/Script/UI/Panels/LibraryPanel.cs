@@ -42,11 +42,13 @@ namespace Script.UI.Panels
         // 폴더 표시 순서 - 기본은 전체 기획 정리.md 9장의 자료 유형 순서(문서 → 대화·오디오 →
         // 이미지 → 수치·그래프)를 따르되, ExamResult(검사 결과)는 기획서의 4대 분류엔 없는
         // 별도 폴더라 문서 바로 뒤에 배치(사용자 요청: "문서에 넣지 말고 검사 결과 폴더를
-        // 따로 만들어달라").
+        // 따로 만들어달라"). Incident(사고 기록, 6단계)는 검사 결과와 개념적으로 가까운
+        // "사건의 기록"이라 그 바로 뒤에 배치.
         private static readonly CaseFileEntryType[] FolderOrder =
         {
-            CaseFileEntryType.Document, CaseFileEntryType.ExamResult, CaseFileEntryType.Dialogue,
-            CaseFileEntryType.Audio, CaseFileEntryType.Image, CaseFileEntryType.Numeric
+            CaseFileEntryType.Document, CaseFileEntryType.ExamResult, CaseFileEntryType.Incident,
+            CaseFileEntryType.Dialogue, CaseFileEntryType.Audio, CaseFileEntryType.Image,
+            CaseFileEntryType.Numeric
         };
 
         // 최근 항목이 위로 오도록 항상 리스트 맨 앞에 꽂는다(구현 계획.md Stage 3 7번 항목).
@@ -241,7 +243,8 @@ namespace Script.UI.Panels
         {
             return entry.type == CaseFileEntryType.Document
                    || entry.type == CaseFileEntryType.ExamResult
-                   || entry.type == CaseFileEntryType.Dialogue;
+                   || entry.type == CaseFileEntryType.Dialogue
+                   || entry.type == CaseFileEntryType.Incident;
         }
 
         private static string FolderLabel(CaseFileEntryType type)
@@ -250,6 +253,7 @@ namespace Script.UI.Panels
             {
                 case CaseFileEntryType.Document: return "문서";
                 case CaseFileEntryType.ExamResult: return "검사 결과";
+                case CaseFileEntryType.Incident: return "사고 기록";
                 case CaseFileEntryType.Dialogue: return "대화 로그";
                 case CaseFileEntryType.Audio: return "음성";
                 case CaseFileEntryType.Image: return "이미지";

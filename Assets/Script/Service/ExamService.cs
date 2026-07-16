@@ -17,6 +17,7 @@ namespace Script.Service
         [Inject] private CaseSessionService _caseSessionService;
         [Inject] private CaseTimeService _caseTimeService;
         [Inject] private HealthService _healthService;
+        [Inject] private MutationService _mutationService;
 
         public static readonly string[] Organs = { "뇌", "심장", "폐", "위", "피부" };
         public static readonly string[] Methods = { "관찰 검사", "음향 검사", "촬영·투과 검사" };
@@ -58,6 +59,14 @@ namespace Script.Service
                 return "업무 시간이 소진되어 검사를 실행할 수 없습니다.";
             }
 
+            // 변이라는 위기 상황에서 태연히 다음 검사를 실행할 순 없다는 전제 - 비상 대응
+            // 전까지는 검사 자체를 막는다(개발 구현 지시서 8장 "검사 중단 및 상황 종료").
+            if (_mutationService != null && _mutationService.IsMutated.CurrentValue)
+            {
+                _caseSessionService.Log("[검사 불가] 검사체가 변이한 상태입니다. 먼저 비상 상황에 대응하십시오.");
+                return "검사체가 변이한 상태라 검사를 실행할 수 없습니다.";
+            }
+
             var result = FindResult(organ, method);
             var title = $"{method} [{intensity}] 결과";
             var content = $"[검사 부위] {organ}\n[검사 방식] {method}\n[검사 강도] {intensity}\n\n{result}";
@@ -67,6 +76,7 @@ namespace Script.Service
             var timeCost = TimeCostMinutes.TryGetValue(method, out var cost) ? cost : 20f;
             _caseTimeService?.ConsumeMinutes(timeCost);
             _healthService?.ApplyExamRisk(method, intensity);
+            _mutationService?.ApplyExamStimulation(organ, method, intensity);
 
             _caseSessionService.Log($"[검사 완료] {organ} - {method} (강도: {intensity}) - 라이브러리에 등록됨");
 

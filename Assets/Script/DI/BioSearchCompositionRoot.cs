@@ -24,6 +24,17 @@ namespace Script.DI
             // 여전히 Inspector 배선이 필요 — DI가 그것까지 대신해주진 않는다.
             builder.RegisterComponentInHierarchy<ComputerViewController>();
 
+            // 사용자가 씬에 배치하는 계기판(3D 비상 버튼) 오브젝트 - 존재하면 DI 그래프에
+            // 편입시켜 MutationService를 주입받게 한다. RegisterComponentInHierarchy는 씬에
+            // 그 타입이 하나도 없으면 컨테이너 빌드 시점에 예외를 던져 부팅 자체가 깨지므로
+            // (VContainer FindComponentProvider 소스 확인), 아직 배치 전이어도 안전하도록
+            // 먼저 찾아보고 있을 때만 등록한다.
+            var emergencyPanel = FindObjectOfType<EmergencyPanelController>();
+            if (emergencyPanel != null)
+            {
+                builder.RegisterComponent(emergencyPanel);
+            }
+
             // ComputerScreenCanvas(=BioSearchUIManager) 프리팹은 씬에 미리 두지 않고 여기서 직접
             // Instantiate+등록한다 - CoreLifetimeScope가 CoreUIManager를 RegisterComponentInNewPrefab으로
             // 등록하는 것과 동일한 패턴. RegisterComponentInHierarchy를 쓰지 않는 이유: LifetimeScope.Awake()는
@@ -52,6 +63,10 @@ namespace Script.DI
             // 생성 강제가 필요 없다.
             builder.Register<CaseTimeService>(Lifetime.Singleton).AsSelf();
             builder.Register<HealthService>(Lifetime.Singleton).AsSelf();
+
+            // 개발 구현 지시서 8장 "6단계 - 기생체 변이와 비상 상황". ExamService가 [Inject]
+            // 필드로 물기 때문에 별도의 즉시 생성 강제가 필요 없다.
+            builder.Register<MutationService>(Lifetime.Singleton).AsSelf();
         }
     }
 }

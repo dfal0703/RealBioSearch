@@ -55,6 +55,11 @@ namespace Script.Room
         private RenderTexture screenRT;
 
         private bool interactive;
+
+        // EmergencyPanelController(계기판 3D 클릭)가 컴퓨터 화면 조작 중엔 자기 레이캐스트를
+        // 쉬어야 하는지 판단하는 데 쓴다 - 두 상호작용이 동시에 마우스를 두고 경합하면 안 됨.
+        public bool IsComputerInteractive => interactive;
+
         private GameObject hoveredObject;
         private GameObject pressedObject;
         private GameObject draggedObject;

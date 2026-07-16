@@ -28,7 +28,11 @@ namespace Script.Data
         Audio,
         Image,
         Numeric,
-        ExamResult
+        ExamResult,
+
+        // 6단계 "기생체 변이와 비상 상황"에서 비상 대응 완료 시 생성되는 사고 보고서.
+        // ExamResult와 같은 이유로 기존 값 사이에 끼워 넣지 않고 맨 뒤에 추가.
+        Incident
     }
 
     // 사례 라이브러리에 누적되는 자료 한 건. JsonUtility가 다뤄야 해서 전부 public 필드.

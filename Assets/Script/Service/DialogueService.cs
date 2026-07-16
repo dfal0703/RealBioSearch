@@ -71,6 +71,15 @@ namespace Script.Service
 
         private async UniTask<string> ExecuteAsk(string keyword)
         {
+            // 사고(변이 강제 종료) 등으로 사례가 이미 Closed된 뒤에는 검사체가 더 이상
+            // 대화 상대가 아니다 - 개발 구현 지시서 8장 "검사 중단 및 상황 종료"가 검사뿐
+            // 아니라 업무 전체의 종료를 뜻하므로, ExamService의 변이 차단과 같은 전제로 ask도
+            // 막는다(help/report는 종료 후에도 과거 기록 열람 용도로 남겨둠).
+            if (_caseSessionService.CurrentCase?.Data.status == CaseStatus.Closed)
+            {
+                return "사례가 이미 종료되어 더 이상 검사체에게 질문할 수 없습니다.";
+            }
+
             if (string.IsNullOrEmpty(keyword))
             {
                 return "질문할 키워드를 입력하세요. 예: ask 기침";
