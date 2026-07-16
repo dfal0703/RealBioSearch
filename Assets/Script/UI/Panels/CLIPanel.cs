@@ -124,6 +124,11 @@ namespace Script.UI.Panels
 
             if (keyboard.escapeKey.wasPressedThisFrame)
             {
+                // Room/PauseInputController도 같은 프레임에 독립적으로 Esc를 폴링한다 - 이
+                // 프레임엔 CLI가 이미 처리했다는 걸 표시해서, 실행 순서와 무관하게 같은 Esc
+                // 입력으로 일시정지까지 같이 열리지 않게 한다(CliInputFocus.cs 참고).
+                CliInputFocus.MarkEscapeConsumed();
+
                 // 자동완성 목록이 떠 있으면 그것부터 닫고, 이미 닫혀 있으면 CLI 포커스 자체를 뺀다
                 // (셸/IDE 자동완성의 흔한 관례 - Esc 한 번에 한 단계씩만 취소).
                 if (_suggestions.Count > 0)

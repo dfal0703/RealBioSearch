@@ -24,6 +24,17 @@ namespace Script.DI
             // 여전히 Inspector 배선이 필요 — DI가 그것까지 대신해주진 않는다.
             builder.RegisterComponentInHierarchy<ComputerViewController>();
 
+            // ESC 일시정지 - ComputerViewController와 같은 GameObject(Main Camera)에 배치해서
+            // 씬에 GameObject를 새로 늘리지 않는다(Room/PauseInputController.cs 참고).
+            // EmergencyPanelController와 같은 이유로 FindObjectOfType 방어 등록을 쓴다 -
+            // RegisterComponentInHierarchy는 씬에 그 타입이 하나도 없으면 컨테이너 빌드
+            // 시점에 예외를 던져 부팅 자체가 깨진다(VContainer FindComponentProvider 소스 확인).
+            var pauseInput = FindObjectOfType<PauseInputController>();
+            if (pauseInput != null)
+            {
+                builder.RegisterComponent(pauseInput);
+            }
+
             // 사용자가 씬에 배치하는 계기판(3D 비상 버튼) 오브젝트 - 존재하면 DI 그래프에
             // 편입시켜 MutationService를 주입받게 한다. RegisterComponentInHierarchy는 씬에
             // 그 타입이 하나도 없으면 컨테이너 빌드 시점에 예외를 던져 부팅 자체가 깨지므로
