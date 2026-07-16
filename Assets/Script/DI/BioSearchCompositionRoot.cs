@@ -46,6 +46,12 @@ namespace Script.DI
             // ExamControlPanel이 [Inject] 필드로 직접 물기 때문에(위와 같은 이유) 별도의 즉시
             // 생성 강제가 필요 없다.
             builder.Register<ExamService>(Lifetime.Singleton).AsSelf();
+
+            // 개발 구현 지시서 7장 "5단계 - 검사 위험과 상태 변화". ExamService가 [Inject]
+            // 필드로 둘 다 물고, HealthStatusPanel도 표시를 위해 물기 때문에 별도의 즉시
+            // 생성 강제가 필요 없다.
+            builder.Register<CaseTimeService>(Lifetime.Singleton).AsSelf();
+            builder.Register<HealthService>(Lifetime.Singleton).AsSelf();
         }
     }
 }

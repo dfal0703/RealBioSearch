@@ -15,9 +15,9 @@ namespace Script.UI.Panels
     // 검사 부위/방식/강도는 각 필드를 클릭하면 그 아래 옵션 목록(드롭다운)이 뜨고, 항목을
     // 클릭하면 선택되며 목록이 닫힌다 - LibraryPanel의 행 생성 패턴(런타임 GameObject 조립 +
     // ClickRelay)을 그대로 재사용해서 별도 드롭다운 프리팹 없이 구현. 한 번에 하나의 목록만
-    // 열려 있을 수 있다(새로 열면 기존 건 자동으로 닫힘). 검사 강도는 아직 아무 로직에도 안
-    // 쓰인다(개발 구현 지시서 7장 "5단계 - 검사 위험과 상태 변화"에서 실제로 건강 상태에 영향을
-    // 주게 될 때까지는 UI만 존재).
+    // 열려 있을 수 있다(새로 열면 기존 건 자동으로 닫힘). 검사 강도는 ExamService.RunExam을
+    // 거쳐 HealthService의 위험도 배율로 쓰인다(개발 구현 지시서 7장 "5단계 - 검사 위험과
+    // 상태 변화").
     [PanelAttribute("Prefabs/UI/Panels/ExamControlPanel")]
     public class ExamControlPanel : MonoRoutine, ICustomPanel
     {

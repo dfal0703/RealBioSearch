@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using Haare.Client.Routine;
@@ -14,9 +15,20 @@ namespace Script.Service
     public class ExamService : NativeRoutine
     {
         [Inject] private CaseSessionService _caseSessionService;
+        [Inject] private CaseTimeService _caseTimeService;
+        [Inject] private HealthService _healthService;
 
         public static readonly string[] Organs = { "뇌", "심장", "폐", "위", "피부" };
         public static readonly string[] Methods = { "관찰 검사", "음향 검사", "촬영·투과 검사" };
+
+        // 개발 구현 지시서 7장 "5단계 - 검사 위험과 상태 변화": "검사 방식에 따른 시간 소요".
+        // 체력 위험도(HealthService)와 마찬가지로 시스템 레벨 값이라 여기 정적으로 정의한다.
+        private static readonly Dictionary<string, float> TimeCostMinutes = new Dictionary<string, float>
+        {
+            { "관찰 검사", 15f },
+            { "음향 검사", 25f },
+            { "촬영·투과 검사", 40f }
+        };
 
         // 결과는 CaseFileEntryType.ExamResult(검사 결과 전용 최상위 폴더)로 라이브러리에
         // 등록한다 - 처음엔 전체 기획 정리.md 9장의 "문서 파일" 분류에 "검사 결과 보고서"가
@@ -32,16 +44,30 @@ namespace Script.Service
         // 방식을 강도만 바꿔 재검사하면 파일이 구분 안 되고 겹쳐버리는 걸 막는 것과, 사용자
         // 요청("어떤 강도였는지 잘 표기해줘")을 둘 다 만족. 부위는 폴더 경로가 이미 보여주므로
         // 파일명에는 안 넣지만, 파일을 열었을 때(NotepadPopup)는 폴더 밖 맥락 없이도 바로
-        // 알 수 있도록 본문 맨 위에 부위/방식/강도를 전부 다시 명시한다 - 지금은 강도가 결과
-        // 자체에 영향을 주지 않지만(5단계에서 실제로 반영될 예정), 그것과 별개로 "무엇을
-        // 실행했는지" 기록 자체는 항상 정확해야 한다.
+        // 알 수 있도록 본문 맨 위에 부위/방식/강도를 전부 다시 명시한다 - 강도는 문서(결과
+        // 텍스트) 자체는 안 바꾸지만(그건 콘텐츠 영역), 아래에서 HealthService.ApplyExamRisk로
+        // 넘어가 실제 위험도에는 반영된다(5단계).
         public async UniTask<string> RunExam(string organ, string method, string intensity)
         {
+            // 업무 시간이라는 자원은 소진되면 물리적으로 더 못 하는 게 자연스러워, 체력과 달리
+            // 여기서 검사 자체를 막는다(구현현황 문서 Stage 5 계획 "범위 확정" 참고). 라이브러리
+            // 등록도 하지 않는다 - 실행되지 않은 검사이므로.
+            if (_caseTimeService != null && _caseTimeService.IsExpired)
+            {
+                _caseSessionService.Log("[검사 불가] 업무 시간이 소진되어 더 이상 검사를 진행할 수 없습니다.");
+                return "업무 시간이 소진되어 검사를 실행할 수 없습니다.";
+            }
+
             var result = FindResult(organ, method);
             var title = $"{method} [{intensity}] 결과";
             var content = $"[검사 부위] {organ}\n[검사 방식] {method}\n[검사 강도] {intensity}\n\n{result}";
 
             await _caseSessionService.AddLibraryEntry(CaseFileEntryType.ExamResult, title, content, organ);
+
+            var timeCost = TimeCostMinutes.TryGetValue(method, out var cost) ? cost : 20f;
+            _caseTimeService?.ConsumeMinutes(timeCost);
+            _healthService?.ApplyExamRisk(method, intensity);
+
             _caseSessionService.Log($"[검사 완료] {organ} - {method} (강도: {intensity}) - 라이브러리에 등록됨");
 
             return result;
