@@ -32,6 +32,11 @@ namespace Script.UI
         [Header("Overlays")]
         [SerializeField] private NotepadPopup notepadPopupTemplate;
 
+        // NotepadPopup과 달리 동시에 여러 개 뜰 일이 없어(검사 실행은 한 번에 하나) 복제
+        // 없이 이 인스턴스 하나를 계속 재사용한다 - LoadingOverlay.Show()/Hide()가 SetActive만
+        // 토글.
+        [SerializeField] private LoadingOverlay loadingOverlay;
+
         private int _popupSpawnCount;
 
         // 새 팝업 창을 하나 만들어서 돌려준다(호출자가 곧바로 Open() 호출). 여러 개를 동시에
@@ -47,6 +52,8 @@ namespace Script.UI
             popup.SetCascadeOffset(new Vector2(cascade * 24f, -cascade * 24f));
             return popup;
         }
+
+        public LoadingOverlay LoadingOverlay => loadingOverlay;
 
         public RectTransform SubjectMonitorSlot => subjectMonitorSlot;
         public RectTransform VisualMemoSlot => visualMemoSlot;

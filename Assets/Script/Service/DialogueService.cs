@@ -92,6 +92,11 @@ namespace Script.Service
                 ? match.response
                 : "...그건 잘 모르겠어요.";
 
+            // 사용자 요청(2026-07-16): 질문 후 바로 대답하지 않고 검사체가 "생각하는" 듯한
+            // 텀을 준다. 질문 자체(CLIPanel의 "> ask ..." echo)는 이미 즉시 로그에 찍힌 뒤라
+            // 이 지연은 답변만 늦춘다.
+            await UniTask.Delay(TimeSpan.FromSeconds(4));
+
             var line = $"[{DateTime.Now:HH:mm:ss}] 질문: {keyword}\n답변: {response}";
             await _caseSessionService.AppendToLog(CaseFileEntryType.Dialogue, DialogueLogTitle, line);
 

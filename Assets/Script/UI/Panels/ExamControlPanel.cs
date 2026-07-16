@@ -42,6 +42,7 @@ namespace Script.UI.Panels
         [SerializeField] private TMP_FontAsset rowFont;
 
         [Inject] private ExamService _examService;
+        [Inject] private BioSearchUIManager _uiManager;
 
         private static readonly string[] Intensities = { "약", "중", "강" };
 
@@ -182,15 +183,77 @@ namespace Script.UI.Panels
         private async UniTaskVoid RunExamAsync()
         {
             _isRunning = true;
-            if (runButtonLabel != null) runButtonLabel.text = "실행 중...";
 
             var organ = ExamService.Organs[_partIndex];
             var method = ExamService.Methods[_methodIndex];
             var intensity = Intensities[_intensityIndex];
+
+            if (runButtonLabel != null) runButtonLabel.text = "검사 진행 중...";
+            await RunLoadingAsync(ExamService.GetLoadingSeconds(method, intensity), $"{method} 진행 중... (강도: {intensity})");
+
             await _examService.RunExam(organ, method, intensity);
 
             if (runButtonLabel != null) runButtonLabel.text = "실행";
             _isRunning = false;
+        }
+
+        // C:\Users\songs\Documents\GitHub\BioSearch(같은 Haare 벤더링을 쓰는 별개 프로젝트)의
+        // ScanCommandManager와 같은 논리를 이식 - (1) 화면 전체를 가리는 모달
+        // 로딩창(LoadingOverlay, 그 프로젝트의 Loading 팝업과 같은 역할 - 다른 조작을 막는다)
+        // + (2) "딜레이 틱": 매끄러운 진행 중간중간 랜덤한 지점에서 잠깐씩 멈췄다 가는 연출
+        // (`bufCount`/`bufTimes`/`bufPos` 로직을 그대로 UniTask 버전으로 옮김 - 4~5개의
+        // 정지를 진행률 0~1 사이 무작위 지점에 배치하고, 그 정지 시간을 총 소요 시간에서 미리
+        // 빼서 나머지를 매끄러운 진행에 쓴다). 진행률은 화면 중앙 LoadingOverlay의 프로세스
+        // 바 하나에만 반영한다 - 처음엔 실행 버튼 자체도 같이 채웠는데, 사용자 피드백
+        // ("실행 버튼이 아니라 화면 중앙 프로세스 바에서 차올라야 한다")에 따라 버튼 쪽 채움은
+        // 제거했다.
+        private async UniTask RunLoadingAsync(float durationSeconds, string message)
+        {
+            var overlay = _uiManager != null ? _uiManager.LoadingOverlay : null;
+            overlay?.Show(message);
+
+            // 사용자 요청 - 검사 진행 중엔 CLI 입력 포커스를 강제로 Esc 상태로 되돌려서
+            // WASD(방 시점 전환)만 가능하게 한다. LoadingOverlay 배경이 클릭은 이미 막지만,
+            // 로딩 시작 전에 이미 CLI에 포커스가 잡혀 있던 경우(키보드 입력은 클릭 히트테스트와
+            // 무관한 별도 경로라 배경만으로는 안 막힘) 타이핑이 새어 나갈 수 있어 여기서
+            // 명시적으로 꺼준다 - ComputerViewController.SetComputerInteractive(false)가
+            // 컴퓨터 시점을 벗어날 때 하는 것과 같은 처리.
+            CliInputFocus.IsActive = false;
+
+            var tickCount = UnityEngine.Random.Range(4, 6);
+            var tickTimes = new float[tickCount];
+            var tickPositions = new float[tickCount];
+            var tickTotal = 0f;
+
+            for (var i = 0; i < tickCount; i++)
+            {
+                tickTimes[i] = durationSeconds * UnityEngine.Random.Range(0.1f, 0.15f);
+                tickPositions[i] = UnityEngine.Random.Range(0f, 1f);
+                tickTotal += tickTimes[i];
+            }
+            Array.Sort(tickPositions);
+
+            var progressDuration = Mathf.Max(0f, durationSeconds - tickTotal);
+            var elapsed = 0f;
+            var tickIndex = 0;
+
+            while (elapsed < progressDuration)
+            {
+                elapsed += Time.deltaTime;
+                var progress = Mathf.Clamp01(elapsed / progressDuration);
+
+                while (tickIndex < tickCount && progress >= tickPositions[tickIndex])
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(tickTimes[tickIndex]));
+                    tickIndex++;
+                }
+
+                overlay?.SetProgress(progress);
+                await UniTask.Yield();
+            }
+
+            overlay?.SetProgress(1f);
+            overlay?.Hide();
         }
     }
 }

@@ -31,6 +31,37 @@ namespace Script.Service
             { "촬영·투과 검사", 40f }
         };
 
+        // C:\Users\songs\Documents\GitHub\BioSearch(같은 Haare 벤더링을 쓰는 별개 프로젝트)의
+        // ScanCommandManager와 같은 논리 - "스캔"(그 프로젝트) / "검사 실행"(이 프로젝트) 둘 다
+        // 파라미터 기반 실시간 로딩을 UI에 보여준다. 그 프로젝트는 폴더 크기(itemCount)로 소요
+        // 시간을 정했지만, 여기는 사용자 요청대로 "고강도, 위험한 종류의 검사일수록 오래
+        // 걸리게" - 방식 위험도(HealthService/MutationService와 같은 서열: 관찰 < 음향 <
+        // 촬영·투과) × 강도 배율을 곱해 초 단위 로딩 시간을 만든다. ExamControlPanel이 검사
+        // 실행 버튼을 채우는 로딩 연출(RunLoadingAsync)에 필요한 시간을 여기서 계산해 넘겨준다
+        // - 위험도 서열 자체는 시스템 값이라 UI 쪽이 아니라 여기(ExamService)에 정의.
+        // 사용자 피드백(2026-07-16): "좀더 오래 걸렸으면 좋겠어" - 최초 값(1.0/2.0/3.0)이
+        // 체감상 너무 짧아 약 3배로 늘림.
+        private static readonly Dictionary<string, float> LoadingBaseSeconds = new Dictionary<string, float>
+        {
+            { "관찰 검사", 3.0f },
+            { "음향 검사", 6.0f },
+            { "촬영·투과 검사", 10.0f }
+        };
+
+        private static readonly Dictionary<string, float> LoadingIntensityMultiplier = new Dictionary<string, float>
+        {
+            { "약", 0.6f },
+            { "중", 1f },
+            { "강", 1.6f }
+        };
+
+        public static float GetLoadingSeconds(string method, string intensity)
+        {
+            var baseSeconds = LoadingBaseSeconds.TryGetValue(method, out var b) ? b : 1.5f;
+            var multiplier = LoadingIntensityMultiplier.TryGetValue(intensity, out var m) ? m : 1f;
+            return baseSeconds * multiplier;
+        }
+
         // 결과는 CaseFileEntryType.ExamResult(검사 결과 전용 최상위 폴더)로 라이브러리에
         // 등록한다 - 처음엔 전체 기획 정리.md 9장의 "문서 파일" 분류에 "검사 결과 보고서"가
         // 있다고 보고 Document + subfolder(장기별)로 묶었는데, 사용자가 "문서에 넣지 말고
