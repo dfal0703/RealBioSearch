@@ -10,8 +10,13 @@ namespace Script.Service
     // 개발 구현 지시서 6장 "4단계 - 핵심 검사 루프". 검사 부위/방식 조합마다 다른 결과를
     // 돌려주는 것 자체가 핵심 - "검사 결과가 하나의 정답 파일로 제공되는 게 아니라 서로 다른
     // 형태의 파일을 대조해 판단"(전체 기획 정리.md 9장) + "검사 결과는 정답을 직접 알려주지
-    // 않는다"(개발 구현 지시서 6장). 초기 구현이라 장기 5개/방식 3개로 제한
-    // ("초기 구현에서는 소수의 장기와 검사 방식만 사용").
+    // 않는다"(개발 구현 지시서 6장).
+    //
+    // 기획 대조 문서(2026-07-16) 이후 - 초기엔 장기 5개/방식 3개로 축소했었는데, 사용자
+    // 지시("의도적으로 축소한 부분 다시 전체로 늘려")로 전체 기획 정리.md 6장이 나열한 장기
+    // 11종/검사 방식 8종 중 "문진"을 뺀 7종을 전부 반영했다 - 문진은 CLI의 'ask' 대화
+    // 명령이 이미 그 역할을 담당하고 있어서 드롭다운에 중복 추가하지 않기로 사용자와 확인함
+    // (같은 검사 개념을 UI 두 곳에 두면 혼란만 커짐).
     public class ExamService : NativeRoutine
     {
         [Inject] private CaseSessionService _caseSessionService;
@@ -19,8 +24,20 @@ namespace Script.Service
         [Inject] private HealthService _healthService;
         [Inject] private MutationService _mutationService;
 
-        public static readonly string[] Organs = { "뇌", "심장", "폐", "위", "피부" };
-        public static readonly string[] Methods = { "관찰 검사", "음향 검사", "촬영·투과 검사" };
+        public static readonly string[] Organs =
+        {
+            "뇌", "심장", "폐", "간", "위", "대장", "신장", "안구", "피부", "근육", "신경계"
+        };
+
+        // 위험도 서열(관찰 < 음향 < 압력·진동 < 촬영·투과 < 전기 < 채취 < 극단적 자극)은
+        // TimeCostMinutes/LoadingBaseSeconds/HealthService.BaseDamage/MutationService.
+        // StimulationBase 네 테이블이 전부 공유하는 전제 - "극단적 자극 검사"는 전체 기획
+        // 정리.md 6장 원문("발견 가능성은 높지만 상해·사망·변이 위험이 큽니다")대로 항상
+        // 최고값.
+        public static readonly string[] Methods =
+        {
+            "관찰 검사", "음향 검사", "압력·진동 검사", "촬영·투과 검사", "전기 검사", "채취 검사", "극단적 자극 검사"
+        };
 
         // 개발 구현 지시서 7장 "5단계 - 검사 위험과 상태 변화": "검사 방식에 따른 시간 소요".
         // 체력 위험도(HealthService)와 마찬가지로 시스템 레벨 값이라 여기 정적으로 정의한다.
@@ -28,7 +45,11 @@ namespace Script.Service
         {
             { "관찰 검사", 15f },
             { "음향 검사", 25f },
-            { "촬영·투과 검사", 40f }
+            { "압력·진동 검사", 30f },
+            { "촬영·투과 검사", 40f },
+            { "전기 검사", 45f },
+            { "채취 검사", 50f },
+            { "극단적 자극 검사", 60f }
         };
 
         // C:\Users\songs\Documents\GitHub\BioSearch(같은 Haare 벤더링을 쓰는 별개 프로젝트)의
@@ -45,7 +66,11 @@ namespace Script.Service
         {
             { "관찰 검사", 3.0f },
             { "음향 검사", 6.0f },
-            { "촬영·투과 검사", 10.0f }
+            { "압력·진동 검사", 7.5f },
+            { "촬영·투과 검사", 10.0f },
+            { "전기 검사", 12.0f },
+            { "채취 검사", 14.0f },
+            { "극단적 자극 검사", 18.0f }
         };
 
         private static readonly Dictionary<string, float> LoadingIntensityMultiplier = new Dictionary<string, float>

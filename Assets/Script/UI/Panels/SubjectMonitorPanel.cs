@@ -41,6 +41,7 @@ namespace Script.UI.Panels
 
             _mutationService.IsMutated.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.IsResolved.Subscribe(_ => Refresh()).AddTo(disposables);
+            _mutationService.EmergencyStepsCompleted.Subscribe(_ => Refresh()).AddTo(disposables);
             Refresh();
         }
 
@@ -56,10 +57,19 @@ namespace Script.UI.Panels
 
             if (statusLabel != null)
             {
+                // 4개 버튼(MutationService.EmergencyStepNames)으로 분리된 뒤로는 몇 개가
+                // 끝났는지도 같이 보여준다 - 계기판에서 어떤 버튼을 더 눌러야 하는지는
+                // EmergencyPanelController의 버튼별 표시등(빨강/초록)으로 구분된다.
+                var step = _mutationService.EmergencyStepsCompleted.CurrentValue;
+                var total = MutationService.EmergencyStepNames.Length;
+
+                // "⚠"은 NEXONLv1GothicBold SDF 폰트 애셋에 그 글리프가 없어서 네모(tofu)로
+                // 깨져 보인다("▾" 화살표가 Stage 1에서 같은 이유로 깨졌던 것과 동일한 문제) -
+                // 폰트에 이미 있는 대괄호 표기로 대체.
                 statusLabel.text = resolved
                     ? "사고 종료"
                     : mutated
-                        ? "<color=#FF4444>⚠ 변이 감지 - 계기판에서 비상 대응하십시오</color>"
+                        ? $"<color=#FF4444>[경고] 변이 감지 - 계기판에서 비상 대응하십시오 ({step}/{total})</color>"
                         : "NO SIGNAL";
             }
         }

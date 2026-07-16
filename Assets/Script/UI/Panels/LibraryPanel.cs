@@ -228,7 +228,10 @@ namespace Script.UI.Panels
             textRect.offsetMax = new Vector2(-8, 0);
 
             var text = textGo.AddComponent<TextMeshProUGUI>();
-            text.text = highlight ? $"★ {label}" : label;
+            // "★"은 NEXONLv1GothicBold SDF 폰트 애셋에 그 글리프가 없어서 네모(tofu)로 깨져
+            // 보인다("▾" 화살표가 Stage 1에서 같은 이유로 깨졌던 것과 동일한 종류의 문제) -
+            // 폰트에 이미 있는 대괄호 표기로 대체.
+            text.text = highlight ? $"[중요] {label}" : label;
             text.fontSize = 14;
             text.color = highlight ? HighlightTextColor : rowColor;
             text.fontStyle = highlight ? FontStyles.Bold : FontStyles.Normal;

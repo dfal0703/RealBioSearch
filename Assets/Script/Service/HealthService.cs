@@ -28,13 +28,18 @@ namespace Script.Service
 
         private const float MaxHealth = 100f;
 
-        // 방식별 기본 위험도 - 관찰 < 음향 < 촬영·투과 순으로 침습적이라는 설계 의도를 따름
-        // (문서에 명시된 서열은 아니지만 "극단적 자극 검사"에 가까울수록 위험하다는 전제).
+        // 방식별 기본 위험도 - 관찰 < 음향 < 압력·진동 < 촬영·투과 < 전기 < 채취 < 극단적
+        // 자극 순(문서에 명시된 서열은 아니지만 "극단적 자극 검사"에 가까울수록 위험하다는
+        // 전제, ExamService.Methods와 같은 서열을 공유).
         private static readonly Dictionary<string, float> BaseDamage = new Dictionary<string, float>
         {
             { "관찰 검사", 2f },
             { "음향 검사", 6f },
-            { "촬영·투과 검사", 10f }
+            { "압력·진동 검사", 8f },
+            { "촬영·투과 검사", 10f },
+            { "전기 검사", 14f },
+            { "채취 검사", 17f },
+            { "극단적 자극 검사", 24f }
         };
 
         private static readonly Dictionary<string, float> IntensityMultiplier = new Dictionary<string, float>

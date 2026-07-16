@@ -313,16 +313,21 @@ namespace Script.Room
         {
             if (hit == null) return;
 
-            // Input System의 휠 델타는 OS 단위(윈도우 기준 한 틱 = 120)라, uGUI가 기대하는
-            // "한 틱 ≈ 1" 스케일(레거시 Input.mouseScrollDelta와 동일한 규약)로 맞춰준다.
-            // 체감 속도는 ScrollRect 쪽 Scroll Sensitivity로 추가 조절 가능.
+            // Input System의 휠 델타는 OS 단위(윈도우 기준 한 틱 = 120)다. 예전엔 "한 틱 ≈ 1"
+            // 스케일을 노리고 120으로 나눴었는데, 실제로 uGUI가 기대하는 스케일은 그게 아니었다 -
+            // Unity 자체 InputSystemUIInputModule 소스(m_ScrollDeltaPerTick, 기본값 6.0f) 주석에
+            // "예전엔 윈도우 기준 한 틱=120이었고 이걸 20으로 나눴다"고 명시돼 있다. 즉 표준
+            // PointerEventData.scrollDelta는 "한 틱 ≈ 6" 스케일이 맞는 것 - 120으로 나누면
+            // 의도한 것보다 6배 작은 값이 나가서, ScrollRect의 Scroll Sensitivity를 아무리
+            // 올려도 원래 있어야 할 속도의 일부만 나왔다(사용자 피드백 "스크롤이 너무 천천히
+            // 내려가"의 실제 원인). Unity 공식 값과 같은 20으로 수정.
             var rawScroll = mouse.scroll.ReadValue();
             if (rawScroll == Vector2.zero) return;
 
             var eventData = new PointerEventData(EventSystem.current)
             {
                 position = screenPoint,
-                scrollDelta = rawScroll / 120f
+                scrollDelta = rawScroll / 20f
             };
             ExecuteEvents.ExecuteHierarchy(hit, eventData, ExecuteEvents.scrollHandler);
         }
