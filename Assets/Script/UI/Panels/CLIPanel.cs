@@ -165,7 +165,7 @@ namespace Script.UI.Panels
             {
                 // 자동완성 후보가 떠 있고 지금 입력이 그 후보와 완전히 같지 않다면(= 아직 고르는
                 // 중이면) Enter는 "선택 확정"으로 쓰고, 이미 완전히 일치하는 상태(더 채울 게
-                // 없음)라면 평범하게 명령을 실행한다 - 그래야 "report" 같은 완전한 명령어를 치고
+                // 없음)라면 평범하게 명령을 실행한다 - 그래야 "help" 같은 완전한 명령어를 치고
                 // Enter를 눌렀을 때 실행되지 않고 자동완성만 되는 걸 막는다.
                 if (_suggestions.Count > 0 && _suggestionIndex >= 0 && !IsHighlightedSuggestionAlreadyTyped())
                 {

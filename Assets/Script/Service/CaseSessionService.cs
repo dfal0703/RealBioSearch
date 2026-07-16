@@ -89,7 +89,8 @@ namespace Script.Service
                    $"요청 경위: {d.requestBackground}\n" +
                    $"기존 질환: {d.existingConditions}\n" +
                    $"신고된 증상: {d.reportedSymptoms}\n" +
-                   $"최근 행동 이상: {d.recentBehaviorAnomalies}";
+                   $"최근 행동 이상: {d.recentBehaviorAnomalies}\n" +
+                   $"제출된 무고 증명 자료: {d.submittedProof}";
         }
 
         // TutorialGuideService가 상황별로 CLI에 흘려주는 짧은 힌트와 달리, 여기 이 문서는
@@ -100,7 +101,7 @@ namespace Script.Service
             // "■"도 폰트 애셋에 글리프가 없어 깨지는 부류라("▾"/"★"/"⚠"/"→"와 같은 문제)
             // 대괄호 표기로 대체.
             return "[바이오서치 업무 안내]\n\n" +
-                   "1. CLI에 'report'를 입력해 진단 보고서를 다시 확인할 수 있습니다.\n" +
+                   "1. 진단 접수 보고서는 우측 상단 라이브러리 '문서' 폴더에서 언제든 다시 확인할 수 있습니다.\n" +
                    "2. CLI에 'ask <키워드>'를 입력해 검사체와 대화하고 의심 부위를 추론하세요.\n" +
                    "3. 중앙 패널에서 검사 부위 · 방식 · 강도를 선택해 검사를 실행하세요.\n" +
                    "4. 검사 결과는 우측 상단 라이브러리 '검사 결과' 폴더에서 확인할 수 있습니다.\n" +

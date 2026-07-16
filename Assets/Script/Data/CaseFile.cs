@@ -76,6 +76,7 @@ namespace Script.Data
         public string existingConditions; // 기존 질환
         public string reportedSymptoms; // 신고된 증상
         public string recentBehaviorAnomalies; // 최근 행동 이상
+        public string submittedProof; // 제출된 무고 증명 자료 - 기획 대조 문서 3장/18장 gap #3
 
         public CaseStatus status;
 

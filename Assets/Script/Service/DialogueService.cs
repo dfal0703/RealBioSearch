@@ -9,14 +9,17 @@ using VContainer;
 namespace Script.Service
 {
     // CLI(자유 텍스트 입력)에서 실제로 실행되는 명령어들. 개발 구현 지시서 3단계 "조사와 자료
-    // 관리" 중 이번 패스에서 구현하는 범위는 help/report/ask 세 개뿐이고, 녹음·장비·기관 연락
+    // 관리" 중 이번 패스에서 구현하는 범위는 help/ask 두 개뿐이고, 녹음·장비·기관 연락
     // 관련 명령은 그 시스템 자체가 없어서 의도적으로 제외했다(구현 계획.md Stage 3 참고).
+    // report 명령은 한때 있었으나 사용자 요청(2026-07-16 "report 명령어는 필요 없을거같아")으로
+    // 제거 - 진단 보고서는 어차피 라이브러리 문서로 항상 열람 가능해 CLI 명령으로 다시 보여줄
+    // 필요가 없다는 판단.
     public class DialogueService : NativeRoutine
     {
         [Inject] private CaseSessionService _caseSessionService;
 
         // CLIPanel의 Tab 자동완성이 명령어 이름 접두어 매칭에 그대로 쓴다.
-        public static readonly string[] Commands = { "help", "report", "ask" };
+        public static readonly string[] Commands = { "help", "ask" };
 
         // 전체 기획 정리.md 5장 "모든 대화는 자동으로 대화 로그 파일에 기록됩니다" - 질문마다
         // 새 라이브러리 항목을 만들지 않고 이 제목의 항목 하나에 계속 이어 붙인다
@@ -46,10 +49,7 @@ namespace Script.Service
             switch (command)
             {
                 case "help":
-                    return "사용 가능한 명령어 - help: 도움말, report: 진단 보고서 다시 보기, ask <키워드>: 검사체에게 질문";
-
-                case "report":
-                    return await ExecuteReport();
+                    return "사용 가능한 명령어 - help: 도움말, ask <키워드>: 검사체에게 질문";
 
                 case "ask":
                     return await ExecuteAsk(argument);
@@ -57,16 +57,6 @@ namespace Script.Service
                 default:
                     return $"'{command}'는 알 수 없는 명령어입니다. help를 입력해 사용 가능한 명령어를 확인하세요.";
             }
-        }
-
-        private UniTask<string> ExecuteReport()
-        {
-            var library = _caseSessionService.CurrentCase?.Data.library;
-            var reportEntry = library?.FirstOrDefault(e => e.type == CaseFileEntryType.Document);
-            var result = reportEntry != null
-                ? reportEntry.content
-                : "등록된 진단 보고서가 없습니다.";
-            return UniTask.FromResult(result);
         }
 
         private async UniTask<string> ExecuteAsk(string keyword)
