@@ -24,6 +24,8 @@ namespace Script.UI.Panels
         [Inject] private MutationService _mutationService;
 
         private static readonly Color NormalScreenColor = new Color(0.15f, 0.15f, 0.15f, 1f);
+        private static readonly Color TenseScreenColor = new Color(0.25f, 0.2f, 0.05f, 1f);
+        private static readonly Color CriticalScreenColor = new Color(0.3f, 0.12f, 0.03f, 1f);
         private static readonly Color MutatedScreenColor = new Color(0.35f, 0.05f, 0.05f, 1f);
 
         public SceneUIManager uiManager { get; set; }
@@ -42,6 +44,7 @@ namespace Script.UI.Panels
             _mutationService.IsMutated.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.IsResolved.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.EmergencyStepsCompleted.Subscribe(_ => Refresh()).AddTo(disposables);
+            _mutationService.Agitation.Subscribe(_ => Refresh()).AddTo(disposables);
             Refresh();
         }
 
@@ -49,10 +52,18 @@ namespace Script.UI.Panels
         {
             var mutated = _mutationService.IsMutated.CurrentValue;
             var resolved = _mutationService.IsResolved.CurrentValue;
+            var agitation = _mutationService.Agitation.CurrentValue;
 
             if (screenImage != null)
             {
-                screenImage.color = mutated ? MutatedScreenColor : NormalScreenColor;
+                screenImage.color = mutated
+                    ? MutatedScreenColor
+                    : agitation switch
+                    {
+                        AgitationLevel.Critical => CriticalScreenColor,
+                        AgitationLevel.Tense => TenseScreenColor,
+                        _ => NormalScreenColor
+                    };
             }
 
             if (statusLabel != null)
@@ -70,7 +81,15 @@ namespace Script.UI.Panels
                     ? "사고 종료"
                     : mutated
                         ? $"<color=#FF4444>[경고] 변이 감지 - 계기판에서 비상 대응하십시오 ({step}/{total})</color>"
-                        : "NO SIGNAL";
+                        : agitation switch
+                        {
+                            // 임계치를 넘기 전 단계적 전조 - 개발 구현 지시서 8장 완료 기준
+                            // "위험의 전조를 인식"을 충족시키는 부분(기획 대조 문서 15장
+                            // 우선순위 1위 gap).
+                            AgitationLevel.Critical => "<color=#FF8844>[경고] 검사체 반응이 극도로 불안정합니다</color>",
+                            AgitationLevel.Tense => "<color=#DDCC66>[관찰] 검사체 반응이 다소 불안정합니다</color>",
+                            _ => "NO SIGNAL"
+                        };
             }
         }
     }

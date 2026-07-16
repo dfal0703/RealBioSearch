@@ -14,11 +14,28 @@ namespace Script.Service
     // 버튼 등장으로만 드러난다. 변이는 "일반적인 전투 시스템이 아니라 평상시의 정적인 문서
     // 업무를 갑작스럽게 붕괴시키는 예외 상황"(같은 문서 8장)이라 한 번 터지면 되돌리지 않는
     // 단발성 이벤트로 구현한다(재변이/반복 트리거 없음).
+    // 기획 대조 문서(2026-07-16) 15장에서 우선순위 1위로 꼽힌 gap - 지금까지는 임계치를
+    // 넘는 "순간" 곧바로 변이가 터졌을 뿐, 전체 기획 정리.md 7장이 요구하는 "말투 변화/카메라
+    // 노이즈/비정상적인 신체 움직임/장기 반응 증가/갑작스러운 침묵/공격 전조"로 미리 암시하는
+    // 단계가 전혀 없었다(개발 구현 지시서 8장 완료 기준 "위험의 전조를 인식하고"와 직접
+    // 충돌). Calm→Tense→Critical→(Mutated) 3단계 전조를 자극도 비율 구간으로 나눠 추가.
+    public enum AgitationLevel
+    {
+        Calm,
+        Tense,
+        Critical
+    }
+
     public class MutationService : NativeRoutine
     {
         [Inject] private CaseSessionService _caseSessionService;
 
         private const float MutationThreshold = 100f;
+
+        // 전조 구간 경계 - 자극도가 임계치의 40%를 넘으면 Tense(경미한 이상 신호),
+        // 75%를 넘으면 Critical(명백한 위험 신호)로 승격. 100%에서 실제 변이(TriggerMutation).
+        private const float TenseRatio = 0.4f;
+        private const float CriticalRatio = 0.75f;
 
         // 방식별 기본 자극도 - HealthService의 위험도 서열(관찰 < 음향 < 압력·진동 < 촬영·
         // 투과 < 전기 < 채취 < 극단적 자극)과 같은 전제를 공유하되, 별도 자원이라 값 자체는
@@ -54,6 +71,10 @@ namespace Script.Service
         public ReactiveProperty<bool> IsMutated { get; } = new ReactiveProperty<bool>(false);
         public ReactiveProperty<bool> IsResolved { get; } = new ReactiveProperty<bool>(false);
 
+        // 변이 전 전조 단계 - SubjectMonitorPanel이 구독해서 화면 색/문구를 단계별로 미리
+        // 바꾼다. 자극도 자체는 여전히 숫자로 노출 안 함(이 프로퍼티는 3단계 구간만 알려줌).
+        public ReactiveProperty<AgitationLevel> Agitation { get; } = new ReactiveProperty<AgitationLevel>(AgitationLevel.Calm);
+
         // 4개 중 몇 개가 완료됐는지(순서 무관 카운트) - SubjectMonitorPanel/
         // EmergencyPanelController가 진행률 표시에 구독해서 쓴다.
         public ReactiveProperty<int> EmergencyStepsCompleted { get; } = new ReactiveProperty<int>(0);
@@ -77,9 +98,42 @@ namespace Script.Service
             var multiplier = IntensityMultiplier.TryGetValue(intensity, out var m) ? m : 1f;
             _stimulation += baseVal * multiplier;
 
+            var ratio = _stimulation / MutationThreshold;
+            var agitation = ratio >= CriticalRatio ? AgitationLevel.Critical
+                : ratio >= TenseRatio ? AgitationLevel.Tense
+                : AgitationLevel.Calm;
+
+            // 단계가 실제로 바뀔 때만 CLI에 암시 문구를 남긴다(매 검사마다 스팸 안 함) -
+            // HealthService.ApplyExamRisk가 5단계 건강 상태 변화에만 로그를 남기는 것과 같은
+            // 절제 원칙.
+            if (agitation != Agitation.CurrentValue)
+            {
+                Agitation.Value = agitation;
+                var hint = BuildAgitationHint(agitation);
+                if (!string.IsNullOrEmpty(hint)) _caseSessionService?.Log(hint);
+            }
+
             if (_stimulation >= MutationThreshold)
             {
                 TriggerMutation();
+            }
+        }
+
+        // 전체 기획 정리.md 7장이 예로 든 암시 신호(말투 변화/카메라 노이즈/비정상적인 신체
+        // 움직임/장기 반응 증가/갑작스러운 침묵/공격 전조) 중 이 프로젝트에서 실제로 표현
+        // 가능한 것들(카메라 노이즈=화면 연출, 나머지는 CLI 관찰 로그)을 골라 썼다 - 3D
+        // 검사체 모델이 없어 "행동 변화"를 직접 연출할 순 없지만, CLI를 통한 관찰 보고
+        // 형태로는 암시할 수 있다.
+        private static string BuildAgitationHint(AgitationLevel level)
+        {
+            switch (level)
+            {
+                case AgitationLevel.Tense:
+                    return "[관찰] 검사체의 호흡과 말투가 평소와 다르게 불규칙해졌습니다.";
+                case AgitationLevel.Critical:
+                    return "[경고] 모니터에 간헐적인 노이즈가 발생하고, 검사체가 갑자기 말을 멈췄습니다 - 위험 신호로 보입니다.";
+                default:
+                    return null;
             }
         }
 
