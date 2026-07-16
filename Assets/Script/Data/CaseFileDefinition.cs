@@ -36,6 +36,11 @@ namespace Script.Data
         public bool isInfected;
         public string infectedRegion;
 
+        // 이 사례가 튜토리얼 챕터인지(개발 구현 지시서 10장 "8단계 - 튜토리얼 챕터 통합").
+        // true면 CaseSessionService가 부팅 시 튜토리얼 안내 문서를 라이브러리에 등록하고
+        // 강조 표시한다 - 나중에 튜토리얼이 아닌 사례가 추가되면 이 값만 false로 두면 된다.
+        public bool isTutorial;
+
         // Stage 3: CLI의 "ask <keyword>" 명령이 참조하는 대화 스크립트.
         public List<DialogueEntry> dialogueScript = new List<DialogueEntry>();
 

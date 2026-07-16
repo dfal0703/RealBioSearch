@@ -50,6 +50,13 @@ namespace Script.Data
         // LibraryPanel이 이 값으로 하위 폴더 행을 만들어준다(사용자 피드백: "경로 좀 명확히
         // 정리해줘" - 검사 결과가 전부 문서 폴더에 평평하게 쌓이던 문제).
         public string subfolder = "";
+
+        // 튜토리얼 챕터에서 플레이어가 놓치지 않도록 라이브러리에서 시각적으로 강조해야 하는
+        // 항목인지(사용자 요청: "튜토리얼 텍스트 파일을 라이브러리에 띄우고, 튜토리얼
+        // 챕터 시에만 강조"). CaseSessionService가 CaseFileDefinitionData.isTutorial이 true인
+        // 사례에서만 이 값을 true로 등록한다 - 나중에 튜토리얼이 아닌 사례가 추가되면 자동으로
+        // 강조가 꺼진다.
+        public bool isHighlighted = false;
     }
 
     // DataManager.GetModel<T>()가 리플렉션으로 역직렬화하는 순수 DTO. JsonUtility가 다뤄야 해서

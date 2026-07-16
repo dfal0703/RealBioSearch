@@ -54,6 +54,16 @@ namespace Script.Service
             {
                 CurrentCase.Data.status = CaseStatus.InProgress;
                 await AddLibraryEntry(CaseFileEntryType.Document, "진단 접수 보고서", BuildDiagnosisReport());
+
+                // 사용자 요청(2026-07-16): "튜토리얼 텍스트 파일 문서를 라이브러리에 하나
+                // 띄워주고, 튜토리얼 챕터 시에만 이 문서를 강조해줘." 이 사례가 튜토리얼일
+                // 때만(isTutorial) 등록하고 강조 플래그를 켠다 - 나중에 튜토리얼이 아닌 사례가
+                // 추가되면 정의 데이터의 isTutorial만 false로 두면 이 블록 자체를 안 탄다.
+                if (CurrentDefinition?.isTutorial == true)
+                {
+                    await AddLibraryEntry(CaseFileEntryType.Document, "튜토리얼 안내", BuildTutorialGuideText(),
+                        highlight: true);
+                }
             }
 
             Log($"검사 요청 수신 - 사례 {CurrentCase.Data.caseId} ({CurrentCase.Data.subjectName})");
@@ -82,6 +92,20 @@ namespace Script.Service
                    $"최근 행동 이상: {d.recentBehaviorAnomalies}";
         }
 
+        // TutorialGuideService가 상황별로 CLI에 흘려주는 짧은 힌트와 달리, 여기 이 문서는
+        // 라이브러리에 항상 남아있는 참고용 요약본이다 - 두 안내가 겹치는 건 의도된 중복
+        // (하나는 흘러가는 로그, 하나는 언제든 다시 열어볼 수 있는 문서).
+        private static string BuildTutorialGuideText()
+        {
+            return "■ 바이오서치 업무 안내\n\n" +
+                   "1. CLI에 'report'를 입력해 진단 보고서를 다시 확인할 수 있습니다.\n" +
+                   "2. CLI에 'ask <키워드>'를 입력해 검사체와 대화하고 의심 부위를 추론하세요.\n" +
+                   "3. 중앙 패널에서 검사 부위 · 방식 · 강도를 선택해 검사를 실행하세요.\n" +
+                   "4. 검사 결과는 우측 상단 라이브러리 '검사 결과' 폴더에서 확인할 수 있습니다.\n" +
+                   "5. 근거가 충분하다고 판단되면 좌측 하단에서 감염 여부와 부위를 판정해 최종 보고서를 제출하세요.\n" +
+                   "6. 검사체가 변이하면 계기판의 비상 버튼으로 즉시 대응하세요.";
+        }
+
         // 사례 라이브러리를 바꾸는 유일한 진입점(개발 구현 지시서 3단계: "자료는 사례 라이브러리에
         // 일관되게 누적"). DialogueService(ask 명령)와 위의 진단 보고서 자동 등록이 모두 이걸 통해서만
         // library를 건드린다.
@@ -92,7 +116,8 @@ namespace Script.Service
         // 문제가 있었다(사용자 피드백: "라이브러리가 일회용 데이터가 되게 해줘"). 라이브러리는
         // 이 세션(CurrentCase.Data, 메모리)에만 존재하고 에디터를 다시 플레이하면 사라진다 -
         // 실제 저장이 필요해지면(플레이어블 빌드 단계) 여기 SaveData 호출을 되살리면 된다.
-        public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content, string subfolder = "")
+        public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content, string subfolder = "",
+            bool highlight = false)
         {
             if (CurrentCase == null) return UniTask.CompletedTask;
 
@@ -103,7 +128,8 @@ namespace Script.Service
                 title = title,
                 content = content,
                 timestamp = DateTime.Now.ToString("HH:mm:ss"),
-                subfolder = subfolder ?? ""
+                subfolder = subfolder ?? "",
+                isHighlighted = highlight
             };
 
             CurrentCase.Data.library.Add(entry);

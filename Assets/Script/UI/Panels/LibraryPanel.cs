@@ -129,12 +129,15 @@ namespace Script.UI.Panels
                 if (!presentTypes.Contains(type)) continue;
 
                 var folderType = type;
+                // 그 폴더 안에 강조 항목이 하나라도 있으면 폴더 행부터 눈에 띄게 - 열어보지
+                // 않아도 "여기 볼 게 있다"는 걸 알 수 있게(사용자 요청: 튜토리얼 문서 강조).
+                var hasHighlighted = _entries.Any(e => e.type == folderType && e.isHighlighted);
                 CreateRow($"{FolderLabel(folderType)}/", () =>
                 {
                     _currentType = folderType;
                     _currentSubfolder = null;
                     RebuildFileList();
-                });
+                }, hasHighlighted);
             }
         }
 
@@ -170,7 +173,7 @@ namespace Script.UI.Panels
             foreach (var entry in entriesOfType.Where(e => string.IsNullOrEmpty(e.subfolder)))
             {
                 var target = entry;
-                CreateRow(FileName(target), () => OpenEntry(target));
+                CreateRow(FileName(target), () => OpenEntry(target), target.isHighlighted);
             }
         }
 
@@ -187,14 +190,19 @@ namespace Script.UI.Panels
             foreach (var entry in _entries.Where(e => e.type == type && e.subfolder == subfolder))
             {
                 var target = entry;
-                CreateRow(FileName(target), () => OpenEntry(target));
+                CreateRow(FileName(target), () => OpenEntry(target), target.isHighlighted);
             }
         }
+
+        // 강조 행의 배경/글자 색 - 나머지 UI가 전부 어둡고 차분한 톤이라 눈에 띄는 금색 계열을
+        // 골랐다(사용자 요청: 튜토리얼 문서를 라이브러리에서 강조).
+        private static readonly Color HighlightBackgroundColor = new Color(0.55f, 0.42f, 0.1f, 0.35f);
+        private static readonly Color HighlightTextColor = new Color(1f, 0.85f, 0.4f, 1f);
 
         // 행(폴더든 파일이든) 하나를 통째로 런타임에 조립한다 - 프리팹으로 미리 만들어두면 목록
         // 개수가 바뀔 때마다 Addressable 인스턴스화를 거쳐야 해서, 개수가 가변인 이런 목록엔
         // 코드로 직접 만드는 쪽이 더 단순하고 프리팹 쪽에 손으로 써야 하는 YAML도 줄어든다.
-        private void CreateRow(string label, System.Action onClick)
+        private void CreateRow(string label, System.Action onClick, bool highlight = false)
         {
             // ComputerScreenCamera가 UI 레이어만 렌더링하도록 컬링 마스크가 잡혀 있을 수 있어서
             // (이 캔버스의 다른 오브젝트들은 전부 m_Layer: 5) - new GameObject()의 기본 레이어(0)
@@ -208,7 +216,7 @@ namespace Script.UI.Panels
             rowRect.sizeDelta = new Vector2(0, rowHeight);
 
             var image = rowGo.AddComponent<Image>();
-            image.color = new Color(1f, 1f, 1f, 0.04f);
+            image.color = highlight ? HighlightBackgroundColor : new Color(1f, 1f, 1f, 0.04f);
             image.raycastTarget = true;
 
             var textGo = new GameObject("Label", typeof(RectTransform)) { layer = uiLayer };
@@ -220,9 +228,10 @@ namespace Script.UI.Panels
             textRect.offsetMax = new Vector2(-8, 0);
 
             var text = textGo.AddComponent<TextMeshProUGUI>();
-            text.text = label;
+            text.text = highlight ? $"★ {label}" : label;
             text.fontSize = 14;
-            text.color = rowColor;
+            text.color = highlight ? HighlightTextColor : rowColor;
+            text.fontStyle = highlight ? FontStyles.Bold : FontStyles.Normal;
             text.alignment = TextAlignmentOptions.MidlineLeft;
             text.raycastTarget = false;
             if (rowFont != null) text.font = rowFont;
