@@ -106,6 +106,17 @@ namespace Script.Service
         // 넘어가 실제 위험도에는 반영된다(5단계).
         public async UniTask<string> RunExam(string organ, string method, string intensity)
         {
+            // 사용자 지시(2026-07-20): "검사 판정 성공이나 실패 후 더이상 검사 불가능 하게 해" -
+            // FinalReportPanel.Submit()이 이미 CaseSessionService.CompleteCase()로 사례 상태를
+            // Closed로 바꿔두므로, 여기서도 같은 상태를 확인해서 제출 이후의 추가 검사를 막는다
+            // (정답/오답 여부와 무관하게 "제출했다"는 사실 자체가 기준 - BuildResultText가
+            // 판정 성공/실패를 나누는 건 순전히 결과 문구 표시용이고, 사례 종료 여부는 하나뿐).
+            if (_caseSessionService?.CurrentCase?.Data.status == CaseStatus.Closed)
+            {
+                _caseSessionService.Log("[검사 불가] 최종 보고서가 이미 제출되어 사례가 종료되었습니다.");
+                return "이미 최종 보고서가 제출되어 검사를 실행할 수 없습니다.";
+            }
+
             // 업무 시간이라는 자원은 소진되면 물리적으로 더 못 하는 게 자연스러워, 체력과 달리
             // 여기서 검사 자체를 막는다(구현현황 문서 Stage 5 계획 "범위 확정" 참고). 라이브러리
             // 등록도 하지 않는다 - 실행되지 않은 검사이므로.

@@ -60,6 +60,12 @@ namespace Script.Room
         // 쉬어야 하는지 판단하는 데 쓴다 - 두 상호작용이 동시에 마우스를 두고 경합하면 안 됨.
         public bool IsComputerInteractive => interactive;
 
+        // 사용자 요청(2026-07-20): "카메라 이동 중에는 입력이 안되도록 해줘" - 시점 전환
+        // 트윈(activeTransition)이 재생되는 동안엔 WASD로 새 전환을 또 걸거나(카메라가 중간에
+        // 방향을 홱 트는 어색함), 화면/계기판 클릭이 들어가면 안 된다. EmergencyPanelController도
+        // 이 값을 참고해 이동 중엔 레이캐스트를 쉰다(IsComputerInteractive와 같은 용도).
+        public bool IsTransitioning { get; private set; }
+
         private GameObject hoveredObject;
         private GameObject pressedObject;
         private GameObject draggedObject;
@@ -198,6 +204,10 @@ namespace Script.Room
 
         protected override void UpdateProcess()
         {
+            // 사용자 요청: 카메라가 시점 전환 중일 때는 어떤 입력도 받지 않는다 - WASD로 새
+            // 전환을 또 걸거나 화면을 클릭하는 걸 막는다.
+            if (IsTransitioning) return;
+
             // CLIPanel이 자유 텍스트 입력을 받는 동안은 WASD가 타이핑 문자로 쓰여야 하므로
             // 시점 전환 키로 가로채면 안 된다(CliInputFocus 참고).
             var keyboard = Keyboard.current;
@@ -221,16 +231,17 @@ namespace Script.Room
 
             if (leavingComputer) SetComputerInteractive(false);
 
+            IsTransitioning = true;
             activeTransition?.Kill();
             activeTransition = DOTween.Sequence()
                 .Join(transform.DOMove(target.position, transitionDuration))
                 .Join(transform.DORotateQuaternion(target.rotation, transitionDuration))
-                .SetEase(transitionEase);
-
-            if (point == ViewPoint.Computer)
-            {
-                activeTransition.OnComplete(() => SetComputerInteractive(true));
-            }
+                .SetEase(transitionEase)
+                .OnComplete(() =>
+                {
+                    IsTransitioning = false;
+                    if (point == ViewPoint.Computer) SetComputerInteractive(true);
+                });
         }
 
         private void SetComputerInteractive(bool value)

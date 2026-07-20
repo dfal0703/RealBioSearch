@@ -13,17 +13,20 @@ namespace Script.Service
     // 시간 소요"). 두 경로가 같은 메서드를 거치므로 잔여 시간을 건드리는 곳이 하나로 유지된다.
     //
     // 초기값(현실 1초 = 게임 1분, 총 240분)은 완전한 임의값 - 구현 계획.md Stage 5에 명시된
-    // 대로 "초기값은 임의 설정 후 플레이 테스트로 조정"할 대상.
+    // 대로 "초기값은 임의 설정 후 플레이 테스트로 조정"할 대상. 사용자 피드백(2026-07-20):
+    // "검사 시간 기존의 2배로 조정해줘" - 240분 -> 480분(실시간 480초 = 8분 체감 소요).
     public class CaseTimeService : NativeRoutine
     {
         [Inject] private CaseSessionService _caseSessionService;
 
         private const float RealSecondsPerGameMinute = 1f;
-        private const float InitialBudgetMinutes = 240f;
+        private const float InitialBudgetMinutes = 480f;
 
         // 잔여 시간이 이 값 아래로 처음 내려가는 순간 CLI에 한 번 경고한다 - 기생체 자극도
-        // 암시(장기 반응 증가 등, 6단계 몫)와 같은 역할을 시간 쪽에서 대신 담당.
-        private const float LowTimeWarningMinutes = 60f;
+        // 암시(장기 반응 증가 등, 6단계 몫)와 같은 역할을 시간 쪽에서 대신 담당. 총 예산 대비
+        // 비율(기존 60/240=25%)을 유지하도록 총 예산과 함께 2배로 맞춤 - 총량만 늘리고 이
+        // 값을 그대로 두면 경고가 상대적으로 훨씬 늦게(전체의 12.5% 시점) 뜨게 된다.
+        private const float LowTimeWarningMinutes = 120f;
 
         public ReactiveProperty<float> RemainingMinutes { get; } =
             new ReactiveProperty<float>(InitialBudgetMinutes);

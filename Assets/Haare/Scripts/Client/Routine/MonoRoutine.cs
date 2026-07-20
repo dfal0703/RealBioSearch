@@ -3,6 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using R3;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using Haare.Client.Core;
 using Haare.Util.Logger;
 
@@ -119,12 +120,31 @@ namespace Haare.Client.Routine
         private void OnDestroy()
         {
             if (_isFinalized) return;
-            
+
             if (Processor.isCreated)
             {
                 Processor.Instance.UnRegister(this);
             }
             _cts.Cancel();
+
+            // Addressables.InstantiateAsync로 만들어진 오브젝트(패널 등)가 SceneUIManager.
+            // ClosePeekPanel()이 아니라 씬 언로드(예: ssh -> Title 전환) 때문에 그냥 파괴되는
+            // 경로가 있다 - 그런 경우 Addressables 쪽 핸들 추적은 안 풀린 채로 남아서, Editor
+            // Play를 멈출 때 Addressables.PlayModeStateChangedCleanup이 이미 없어진 오브젝트를
+            // 가리키는 핸들을 정리하려다 "Attempting to use an invalid operation handle"
+            // 예외를 던진다(2026-07-20, errors.md). ReleaseInstance는 이 GameObject가 애초에
+            // Addressables 추적 대상이 아니면 조용히 false만 반환하고 아무 부작용이 없으므로
+            // (AddressablesImpl.ReleaseInstance - m_resultToHandle 사전 조회 실패 시 return
+            // false), MonoRoutine 전체에 걸어둬도 안전하다 - 어차피 파괴되는 중이므로 예외가
+            // 나더라도 게임 동작에 영향은 없어 조용히 삼킨다.
+            try
+            {
+                Addressables.ReleaseInstance(gameObject);
+            }
+            catch
+            {
+                // ignored - 이미 파괴 중인 오브젝트에 대한 정리 시도라 실패해도 무해하다.
+            }
         }
     }
 }

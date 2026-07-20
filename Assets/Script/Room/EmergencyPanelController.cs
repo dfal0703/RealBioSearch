@@ -1,3 +1,4 @@
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using Haare.Client.Routine;
 using R3;
@@ -35,20 +36,37 @@ namespace Script.Room
         private static readonly Color ResolvedColor = new Color(0.15f, 0.4f, 0.15f, 1f);
 
         private MutationService _mutationService;
+        private CaseSessionService _caseSessionService;
         private Camera mainCamera;
 
+        // 사용자가 logs.md에 남겨준 진단 로그로 원인 확정(2026-07-20): "mainCamera=False" -
+        // Camera.main이 Constructor() 시점엔 아직 null을 반환하고 있었다(태그는 정상인데도
+        // 그 시점에 아직 tag lookup이 안 맞았던 것으로 보임 - ComputerViewController는 같은
+        // Main Camera GameObject에 자기 자신의 GetComponent<Camera>()를 쓰기 때문에 이 문제를
+        // 아예 겪지 않았고, 그래서 화면/CLI 클릭만 멀쩡했던 것). 한 번 캐시하고 끝내지 않고
+        // null이면 매 프레임 다시 시도하도록 바꿔서 이 타이밍 문제를 스스로 회복하게 한다.
         protected override void Constructor()
         {
             mainCamera = Camera.main;
+        }
+
+        // isInSceneOnly=false는 25-6에서 시도했던 수정 - 실제 원인(Camera.main 타이밍)과는
+        // 무관했지만, MonoRoutine.OnDestroy()가 씬 언로드 시 알아서 UnRegister하므로
+        // isInSceneOnly=true로 둘 실익이 없다는 점 자체는 여전히 유효해 그대로 유지한다.
+        public override async UniTask Initialize(CancellationToken cts)
+        {
+            isInSceneOnly = false;
+            await base.Initialize(cts);
         }
 
         // MutationService는 [Inject] 필드가 아니라 메서드 주입으로 받는다 - 값이 채워지는
         // 시점에 바로 구독을 시작해야(늦게 구독하면 이미 지나간 상태 변화를 놓칠 수 있음)
         // ComputerViewController가 SceneUIManager를 받는 것과 같은 패턴.
         [Inject]
-        private void Construct(MutationService mutationService)
+        private void Construct(MutationService mutationService, CaseSessionService caseSessionService)
         {
             _mutationService = mutationService;
+            _caseSessionService = caseSessionService;
             _mutationService.IsMutated.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.IsResolved.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.EmergencyStepsCompleted.Subscribe(_ => Refresh()).AddTo(disposables);
@@ -57,7 +75,14 @@ namespace Script.Room
 
         protected override void UpdateProcess()
         {
-            if (computerViewController != null && computerViewController.IsComputerInteractive) return;
+            if (computerViewController != null &&
+                (computerViewController.IsComputerInteractive || computerViewController.IsTransitioning)) return;
+
+            // Constructor() 시점에 Camera.main이 null이었을 경우를 대비한 자가 복구 - 한 번
+            // 못 찾았다고 영원히 포기하지 않고, null인 동안은 매 프레임 다시 시도한다(찾고
+            // 나면 더 이상 재시도하지 않으니 비용 부담 없음).
+            if (mainCamera == null) mainCamera = Camera.main;
+
             if (buttonColliders == null || buttonColliders.Length == 0 || mainCamera == null || _mutationService == null) return;
 
             var mouse = Mouse.current;
@@ -76,9 +101,18 @@ namespace Script.Room
             }
         }
 
+        // 변이가 아직 안 일어난 평상시엔 버튼을 눌러도 원래 아무 효과가 없다(비상 버튼이니
+        // 당연함) - 클릭 자체는 인식되고 있다는 걸 보여주기 위해 CLI 로그만 남긴다.
         private void OnButtonClicked(int index)
         {
-            if (!_mutationService.IsMutated.CurrentValue || _mutationService.IsResolved.CurrentValue) return;
+            if (_mutationService.IsResolved.CurrentValue) return;
+
+            if (!_mutationService.IsMutated.CurrentValue)
+            {
+                _caseSessionService?.Log("[계기판] 특별한 이상이 감지되지 않아 별도 조치가 필요하지 않습니다.");
+                return;
+            }
+
             _mutationService.CompleteEmergencyStep(index).Forget();
         }
 

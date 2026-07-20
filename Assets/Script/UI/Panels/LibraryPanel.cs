@@ -228,10 +228,11 @@ namespace Script.UI.Panels
             textRect.offsetMax = new Vector2(-8, 0);
 
             var text = textGo.AddComponent<TextMeshProUGUI>();
-            // "★"은 NEXONLv1GothicBold SDF 폰트 애셋에 그 글리프가 없어서 네모(tofu)로 깨져
-            // 보인다("▾" 화살표가 Stage 1에서 같은 이유로 깨졌던 것과 동일한 종류의 문제) -
-            // 폰트에 이미 있는 대괄호 표기로 대체.
-            text.text = highlight ? $"[중요] {label}" : label;
+            // "★"은 원본 NEXONLv1GothicBold.ttf에 실제로 글리프가 있다(fontTools cmap 확인,
+            // U+2605 존재) - 예전에 깨졌던 진짜 원인은 SDF 아틀라스가 1장(2048x2048)뿐이라
+            // 다 차서 새 글리프를 못 넣은 것이었고(17장 원인 규명), 그건 이미 multi-atlas
+            // 활성화로 고쳐졌다. 그래서 대괄호 대체가 아니라 별표를 다시 써도 된다.
+            text.text = highlight ? $"★ {label}" : label;
             text.fontSize = 14;
             text.color = highlight ? HighlightTextColor : rowColor;
             text.fontStyle = highlight ? FontStyles.Bold : FontStyles.Normal;
