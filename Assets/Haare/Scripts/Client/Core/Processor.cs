@@ -42,11 +42,14 @@ namespace Haare.Client.Core
         /// <summary>
         /// Constructor 게임의 초동 처리가 이곳에서 
         /// </summary>
-        public async UniTask Constructor( 
-            Func<UniTask> initializePlugin, 
-            Func<UniTask> registerProcesses 
-            ) 
+        public async UniTask Constructor(
+            Func<UniTask> initializePlugin,
+            Func<UniTask> registerProcesses
+            )
         {
+	        // 씬에 미리 배치된 인스턴스를 쓰는 경우 Create()를 안 거치므로 여기서도 보장해준다.
+	        DontDestroyOnLoad(gameObject);
+
 	        processing.Value = processvalue;
 	        QualitySettings.vSyncCount = 0;
 

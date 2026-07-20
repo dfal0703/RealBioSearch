@@ -21,7 +21,8 @@ namespace Haare.Client.Routine.Service.SceneService
         DemoTitleScene,
         DemoLoadScene,
         DemoLobbyScene,
-        ssh
+        ssh,
+        Title
     }
     
     public enum SceneLoadPhase

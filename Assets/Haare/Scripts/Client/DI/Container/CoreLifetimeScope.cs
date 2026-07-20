@@ -13,7 +13,7 @@ namespace Haare.Client.Core.DI
     public class CoreLifetimeScope : LifetimeScope 
     {
         [SerializeField]
-        private CoreUIManager _coreUIManagerPrefab;
+        protected CoreUIManager _coreUIManagerPrefab;
         
 
         private bool isLocalMode = true;
@@ -24,6 +24,7 @@ namespace Haare.Client.Core.DI
             
             builder.RegisterComponentInNewPrefab(_coreUIManagerPrefab, Lifetime.Singleton)
                 .DontDestroyOnLoad() // 씬 전환 시 파괴되지 않도록 설정
+                .As<SceneUIManager>() // UIPresenter가 요구하는 SceneUIManager 주입도 같은 인스턴스로 해결되도록
                 .AsSelf();           // CoreUIManager 타입으로 등록
             
             

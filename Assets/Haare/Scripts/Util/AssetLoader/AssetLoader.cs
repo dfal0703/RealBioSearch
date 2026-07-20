@@ -94,6 +94,13 @@ namespace Haare.Util.Loader
                 // 1. 경로 조합
                 string path = Path.Combine(BasePath, filePath);
                 
+                // 1-1. filePath에 하위 폴더가 포함된 경우("Save/map.json" 등) 없으면 만들어준다.
+                //      안 만들면 File.WriteAllTextAsync가 DirectoryNotFoundException을 던지고
+                //      아래 catch에서 조용히 삼켜져서 "저장 완료" 로그 없이 저장이 실패한 것처럼 보인다.
+                string directory = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+
                 // 2. 객체를 JSON 문자열로 변환 (들여쓰기 포함)
                 string json = JsonUtility.ToJson(data, true);
 

@@ -32,8 +32,13 @@ namespace Haare.Client.Core.Singleton
                         
                     }
                     Type t = typeof(T);
-                    Create();
+                    // 씬에 이미 배치돼 있으면(수동 배치) 그걸 그대로 쓰고, 없을 때만 새로 만든다.
                     instance = (T)FindObjectOfType(t);
+                    if (instance == null)
+                    {
+                        Create();
+                        instance = (T)FindObjectOfType(t);
+                    }
                 }
               
                 return instance;

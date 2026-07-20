@@ -320,7 +320,16 @@ namespace Haare.Client.UI
             if (panel != null)
             {
                 panel.ClosePanel();
-                Destroy(panel.panel); // 혹은 Destroy(panel.gameObject);
+
+                // Addressables 핸들 해제는 여기서 직접 안 하고 MonoRoutine.OnDestroy()의 공용
+                // 처리에 맡긴다(2026-07-20) - 처음엔 여기서 Addressables.ReleaseInstance를
+                // 직접 불렀는데, 그러면 ReleaseInstance -> 내부 Destroy -> 이 오브젝트의
+                // OnDestroy -> (MonoRoutine이 추가로) ReleaseInstance를 또 호출하는 이중 해제
+                // 경로가 생겨서 오히려 "Attempting to use an invalid operation handle"을 더
+                // 자주 재현시킬 위험이 있었다. Destroy() 한 번만 부르고, 실제 Addressables
+                // 해제는 MonoRoutine.OnDestroy()가 이 프레임/다음 프레임에 단 한 번만 하도록
+                // 창구를 하나로 모았다(씬 언로드로 파괴되는 경로도 그쪽에서 같이 커버됨).
+                Destroy(panel.panel);
             }
             PanelDic.Remove(currentKey);
             TypePanelStack.Pop();
