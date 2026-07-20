@@ -246,6 +246,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e3b3f9c3856e8a8b492b74c4c01ca1f, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  parentReference:
+    TypeName:
+  autoRun: 1
+  autoInjectGameObjects: []
   titleUIManagerPrefab: {fileID: 100000006, guid: 93277af52a2c045922cfda73dd3143bb, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

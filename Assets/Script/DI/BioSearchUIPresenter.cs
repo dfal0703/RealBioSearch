@@ -41,6 +41,16 @@ namespace Script.DI
             await OpenStatic<CLIPanel>(_uiManager.CliSlot);
 
             await PostInitializeAsync();
+
+            // Title->ssh 전환 시 TitlePresenter.StartGame()이 걸어둔 FadeIn을 여기서 해제한다 -
+            // ssh가 최초 부팅 씬일 땐 LoadingFadePanel 자체가 없어서 RentPanel이 null이라
+            // FadeOut 내부의 ClosePanel 호출이 아무 것도 못 찾고 조용히 지나간다(안전,
+            // TitlePresenter.BootSequence()와 동일한 패턴).
+            if (_coreUIManager.RentPanel<Demo.UI.LoadingFadePanel>() != null)
+            {
+                await FadeOut();
+            }
+
             LogHelper.Log(LogHelper.FRAMEWORK, "BioSearchUIPresenter boot sequence complete");
         }
 

@@ -76,10 +76,14 @@ namespace Script.UI.Panels
             await coreUIManager.LoadPanel<LoadingFadePanel>();
             var fade = coreUIManager.RentPanel<LoadingFadePanel>();
             fade.OpenPanel();
-            await fade.FadeIn();
 
-            // 화면이 완전히 검게 덮인 뒤에 복원해야 전환 도중 잠깐 다시 움직이는 게 안 보인다.
+            // FadeIn()이 내부적으로 Time.deltaTime으로 진행도를 계산하는데(CustomImage.Fade),
+            // timeScale이 0인 상태로는 그 자체가 절대 끝나지 않는다(자기 자신이 멈춰있는 시간을
+            // 기다리는 데드락) - 그래서 복원은 반드시 FadeIn보다 먼저 와야 한다. 알파가 아직
+            // 0인 시점에 재개되므로 화면이 잠깐 다시 움직이는 게 보이는 부작용은 사실상 없다.
             Time.timeScale = 1f;
+
+            await fade.FadeIn();
 
             await sceneService.LoadScene(SceneName.Title);
         }
