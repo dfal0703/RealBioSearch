@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Cysharp.Threading.Tasks;
 using Haare.Client.Routine;
 using Script.Data;
+using UnityEngine;
 using VContainer;
 
 namespace Script.Service
@@ -87,13 +90,51 @@ namespace Script.Service
             return baseSeconds * multiplier;
         }
 
+        // 확장 기획(자료 생성계 정규화, 2026-07-24) - 검사 방식 -> 생성할 원자료 타입 매핑.
+        // HealthService.BaseDamage/MutationService.StimulationBase와 같은 강도 배율 관례를
+        // 그대로 따른다(약 0.5 / 중 1 / 강 2). 원래는 "음향 검사"→Audio, "극단적 자극 검사"→
+        // Audio+Numeric 두 항목이었는데, 사용자 지시(2026-07-24) "수치그래프와 음성을 따로
+        // 두지 말고 하나로 합쳐"에 따라 Audio 타입 자체를 없애고 전부 Numeric으로 통합했다
+        // (확장 기획 문서 2.3.2). 방식마다 항목을 하나만 만들면 되므로 타입 배열이 아니라
+        // 단일 타입 매핑으로 단순화 - "촬영·투과 검사"만 여전히 Image로 남는다(음성/수치와는
+        // 다른 별개의 자료 형태라 이번 병합 대상이 아님).
+        private static readonly Dictionary<string, CaseFileEntryType> RawDataTypes =
+            new Dictionary<string, CaseFileEntryType>
+            {
+                { "관찰 검사", CaseFileEntryType.Numeric },
+                { "음향 검사", CaseFileEntryType.Numeric },
+                { "압력·진동 검사", CaseFileEntryType.Numeric },
+                { "촬영·투과 검사", CaseFileEntryType.Image },
+                { "전기 검사", CaseFileEntryType.Numeric },
+                { "채취 검사", CaseFileEntryType.Numeric },
+                { "극단적 자극 검사", CaseFileEntryType.Numeric }
+            };
+
+        // 방식이 Numeric으로 통합됐어도, 원래 "음성"이었던 방식(음향 검사/극단적 자극 검사)은
+        // 여전히 파형+주파수 요약 태그를 담아야 자료 형태의 의미가 유지된다 - 타입이 아니라
+        // 방식(method) 기준으로 태그 생성 방식을 고른다.
+        private static readonly HashSet<string> AudioLikeMethods = new HashSet<string>
+        {
+            "음향 검사", "극단적 자극 검사"
+        };
+
+        private static readonly Dictionary<string, float> RawDataIntensityMultiplier = new Dictionary<string, float>
+        {
+            { "약", 0.5f },
+            { "중", 1f },
+            { "강", 2f }
+        };
+
+        private const int SeriesLength = 8;
+
         // 결과는 CaseFileEntryType.ExamResult(검사 결과 전용 최상위 폴더)로 라이브러리에
         // 등록한다 - 처음엔 전체 기획 정리.md 9장의 "문서 파일" 분류에 "검사 결과 보고서"가
         // 있다고 보고 Document + subfolder(장기별)로 묶었는데, 사용자가 "문서에 넣지 말고
         // 검사 결과 폴더를 따로 만들어달라"고 명시적으로 요청해서 최상위 폴더 자체를 분리했다
-        // (CaseFile.cs의 CaseFileEntryType 주석 참고). 그래도 실제 사진/파형/녹음을 만드는
-        // 시스템은 아직 없어서(시스템과 콘텐츠 분리 원칙) 내용 자체는 여전히 텍스트 보고서고,
-        // Image/Audio/Numeric으로 등록하면 LibraryPanel에서 "아직 열람 지원 안 함"으로 막힘.
+        // (CaseFile.cs의 CaseFileEntryType 주석 참고). 이 텍스트 판독 소견과 별개로, 검사
+        // 방식에 맞는 원자료(Numeric/Image)도 GenerateRawDataEntries()가 추가로 만든다
+        // (확장 기획 문서 파트 A, 2026-07-24 - 예전엔 이 타입들이 콘텐츠 없이 타입만 있어서
+        // LibraryPanel에서 "아직 열람 지원 안 함"으로 막혀 있었다).
         // 장기(organ)는 계속 subfolder로 넘겨서 "검사 결과/폐/관찰 검사 결과.txt"처럼 장기별로
         // 묶는다.
         //
@@ -139,6 +180,7 @@ namespace Script.Service
             var content = $"[검사 부위] {organ}\n[검사 방식] {method}\n[검사 강도] {intensity}\n\n{result}";
 
             await _caseSessionService.AddLibraryEntry(CaseFileEntryType.ExamResult, title, content, organ);
+            await GenerateRawDataEntries(organ, method, intensity);
 
             var timeCost = TimeCostMinutes.TryGetValue(method, out var cost) ? cost : 20f;
             _caseTimeService?.ConsumeMinutes(timeCost);
@@ -155,6 +197,146 @@ namespace Script.Service
             var results = _caseSessionService.CurrentDefinition?.examResults;
             var match = results?.FirstOrDefault(e => e.organ == organ && e.method == method);
             return match != null ? match.result : "특이 소견 없음. 정상 범위 내.";
+        }
+
+        // 확장 기획(자료 생성계 정규화, 2026-07-24) - ExamResult(판독 소견 텍스트)와 별개로,
+        // 검사 방식에 맞는 형태(Numeric/Image)의 원자료를 라이브러리에 추가로 등록한다.
+        // "서로 다른 형태의 파일을 대조"(전체 기획 정리.md 9장)하는 경험을 위한 것 - 방식이
+        // 매핑돼 있지 않으면(RawDataTypes에 없는 방식) 아무것도 만들지 않는다.
+        private async UniTask GenerateRawDataEntries(string organ, string method, string intensity)
+        {
+            if (!RawDataTypes.TryGetValue(method, out var type)) return;
+
+            var baseline = FindBaseline(organ, method);
+            var intensityScale = RawDataIntensityMultiplier.TryGetValue(intensity, out var m) ? m : 1f;
+
+            var seed = $"{organ}|{method}|{intensity}|{type}";
+            var series = BuildSeries(seed, baseline, intensityScale);
+            var tags = type == CaseFileEntryType.Image
+                ? BuildImageSummaryTags(series)
+                : AudioLikeMethods.Contains(method)
+                    ? BuildAudioSummaryTags(series)
+                    : Array.Empty<string>();
+
+            var title = $"{method} [{intensity}] {RawDataLabel(type)}";
+            var content = BuildRawDataContent(organ, method, intensity, type, series, tags);
+
+            await _caseSessionService.AddLibraryEntry(type, title, content, organ,
+                seriesData: series, summaryTags: tags);
+        }
+
+        private float[] FindBaseline(string organ, string method)
+        {
+            var results = _caseSessionService.CurrentDefinition?.examResults;
+            var match = results?.FirstOrDefault(e => e.organ == organ && e.method == method);
+            return match?.seriesBaseline != null && match.seriesBaseline.Length > 0 ? match.seriesBaseline : null;
+        }
+
+        // baseline이 있으면(저작자가 정한 값) 강도 배율만 곱해 그대로 쓴다 - 그래프 "모양"
+        // 자체가 판정 근거이므로 실행마다 랜덤하게 바뀌면 안 된다(확장 기획 문서 2.6). 없으면
+        // 결정론적 노이즈(seed 고정)로 채운 평탄한 기준선을 대신 사용한다 - 같은 조합을 다시
+        // 검사해도 항상 같은 그래프가 나온다.
+        private static float[] BuildSeries(string seed, float[] baseline, float intensityScale)
+        {
+            var series = new float[SeriesLength];
+            for (var i = 0; i < SeriesLength; i++)
+            {
+                var baseValue = baseline != null
+                    ? baseline[i % baseline.Length]
+                    : 20f + DeterministicNoise(seed, i) * 6f;
+                series[i] = baseValue * intensityScale;
+            }
+
+            return series;
+        }
+
+        // GetHashCode()는 프로세스마다 값이 달라질 수 있어(문자열 해시 랜덤화) 쓰지 않는다 -
+        // FNV-1a로 직접 계산해 같은 seed는 항상 같은 값을 내도록 보장한다.
+        private static float DeterministicNoise(string seed, int index)
+        {
+            unchecked
+            {
+                var hash = 2166136261u;
+                var text = seed + index;
+                foreach (var c in text)
+                {
+                    hash ^= c;
+                    hash *= 16777619u;
+                }
+
+                return (hash % 1000u) / 1000f;
+            }
+        }
+
+        // 순수 ASCII 문자만 사용한다 - 특수 유니코드 기호가 SDF 폰트 아틀라스 한계로 깨졌던
+        // 전례(기획 대조 문서 16~17장) 때문에, 그래프 표현도 '#'/'-' 조합으로만 그린다.
+        private static string BuildSeriesText(float[] series)
+        {
+            var sb = new StringBuilder();
+            var max = 1f;
+            foreach (var v in series) max = Mathf.Max(max, v);
+
+            for (var i = 0; i < series.Length; i++)
+            {
+                var ratio = Mathf.Clamp01(series[i] / max);
+                var filled = Mathf.RoundToInt(ratio * 10);
+                var bar = new string('#', filled) + new string('-', 10 - filled);
+                sb.AppendLine($"t{i:00} [{bar}] {series[i]:0.0}");
+            }
+
+            return sb.ToString();
+        }
+
+        // 음향 검사의 "파형+주파수 요약" 통합 표현(2.3.1) - 실제 스펙트럼 분석 없이 시계열
+        // 통계(평균/변동폭)에서 대역·이상 여부를 결정론적으로 도출한다.
+        private static string[] BuildAudioSummaryTags(float[] series)
+        {
+            var avg = series.Average();
+            var band = avg < 15f ? "저주파 우세" : avg < 30f ? "중대역 우세" : "고주파 우세";
+            var variance = series.Max() - series.Min();
+            var anomaly = variance > 15f ? "비정상 변동/복수 음성 의심" : "안정적 파형";
+            return new[] { band, anomaly };
+        }
+
+        private static string[] BuildImageSummaryTags(float[] series)
+        {
+            var variance = series.Max() - series.Min();
+            var densityTag = variance > 20f
+                ? "밀도 뚜렷한 이물질 음영 감지"
+                : variance > 8f
+                    ? "밀도 경미한 편차"
+                    : "밀도 이상 없음";
+            return new[] { densityTag };
+        }
+
+        private static string BuildRawDataContent(string organ, string method, string intensity,
+            CaseFileEntryType type, float[] series, string[] tags)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"[검사 부위] {organ}");
+            sb.AppendLine($"[검사 방식] {method}");
+            sb.AppendLine($"[검사 강도] {intensity}");
+            sb.AppendLine();
+            sb.AppendLine($"[{RawDataLabel(type)}]");
+            sb.Append(BuildSeriesText(series));
+
+            if (tags.Length > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"[요약] {string.Join(", ", tags)}");
+            }
+
+            return sb.ToString();
+        }
+
+        private static string RawDataLabel(CaseFileEntryType type)
+        {
+            switch (type)
+            {
+                case CaseFileEntryType.Image: return "촬영 판독 카드";
+                case CaseFileEntryType.Numeric: return "수치·파형 그래프";
+                default: return type.ToString();
+            }
         }
     }
 }

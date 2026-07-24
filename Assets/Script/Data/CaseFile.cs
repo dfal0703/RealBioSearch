@@ -12,20 +12,24 @@ namespace Script.Data
     }
 
     // 전체 기획 정리.md 9장 "검사 결과와 파일 시스템"의 4대 분류. Numeric은 수치·그래프 자료용 —
-    // 지금은 Document/Dialogue만 실제로 만들고, Audio/Image/Numeric은 그 콘텐츠를 만드는
-    // 시스템(녹음/촬영/검사)이 생기는 다음 스테이지에서 채워진다.
+    // ExamService.GenerateRawDataEntries()가 검사 방식에 맞춰 Image/Numeric을 실제로 채운다
+    // (확장 기획 문서 파트 A, 2026-07-24 - 그 전까지는 타입만 있고 콘텐츠가 없었다).
+    //
+    // 원래는 "음성"(Audio)이 별도 값으로 있었으나, 사용자 지시(2026-07-24) "수치그래프와
+    // 음성을 따로 두지 말고 하나로 합쳐"에 따라 제거하고 Numeric으로 완전히 통합했다 - 음향
+    // 검사의 파형도 결국 시계열 숫자 데이터라 별도 타입/폴더를 유지할 실익이 없다는 판단
+    // (확장 기획 문서 2.3.1/2.3.2 참고). 이 프로젝트는 CaseFileData를 세션 중에만 메모리에
+    // 두고 디스크에 저장하지 않으므로(`CaseSessionService` 주석 참고) enum 값을 지워도 저장된
+    // 데이터의 정수 표현이 깨질 걱정이 없다.
     //
     // ExamResult는 기획서의 4대 분류엔 없는 다섯 번째 값 - 원래는 "검사 결과 보고서"가 문서
     // 파일 분류에 속한다고 보고 Document + subfolder(장기별)로 묶었는데, 사용자가 "문서에
     // 넣지 말고 검사 결과 폴더를 따로 만들어달라"고 명시적으로 요청해서 최상위 폴더 자체를
-    // 분리했다. JsonUtility가 enum을 정수로 직렬화하므로 기존 값 사이에 끼워 넣지 않고 맨
-    // 뒤에 추가 - 나중에 실제 저장(SaveData)을 다시 켜게 되면 중간에 끼워 넣었을 때 기존
-    // 저장 파일의 번호가 밀리는 걸 방지.
+    // 분리했다.
     public enum CaseFileEntryType
     {
         Document,
         Dialogue,
-        Audio,
         Image,
         Numeric,
         ExamResult,
@@ -57,6 +61,19 @@ namespace Script.Data
         // 사례에서만 이 값을 true로 등록한다 - 나중에 튜토리얼이 아닌 사례가 추가되면 자동으로
         // 강조가 꺼진다.
         public bool isHighlighted = false;
+
+        // 확장 기획(자료 생성계 정규화, 2026-07-24) - Numeric 타입(음향/전기/압력·진동 등
+        // 계측·파형 데이터를 전부 통합, 아래 CaseFileEntryType 주석 참고)의 원시 시계열 값.
+        // ExamService가 검사 방식별로 채우고, 비어있으면(길이 0) 그래프 없이 content 텍스트만
+        // 표시한다(Document/Dialogue/ExamResult/Incident는 항상 빈 배열 - 하위 호환).
+        public float[] seriesData = new float[0];
+
+        // 같은 문서 - Numeric/Image 타입의 판독 요약 태그(예: "저주파 우세", "밀도 이상 없음").
+        // 사용자 지시(2026-07-24) "오디오와 파형으로 구분되던 것을 오디오+파형으로 하자" →
+        // 이어서 "수치그래프와 음성을 따로 두지 말고 하나로 합쳐"에 따라, 음향 검사 결과도
+        // 별도 라이브러리 항목/타입으로 쪼개지 않고 Numeric 항목 하나에 파형(seriesData)과
+        // 요약 태그(summaryTags)를 함께 담는다(확장 기획 문서 2.3.1/2.3.2 참고).
+        public string[] summaryTags = new string[0];
     }
 
     // DataManager.GetModel<T>()가 리플렉션으로 역직렬화하는 순수 DTO. JsonUtility가 다뤄야 해서

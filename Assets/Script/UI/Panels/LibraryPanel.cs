@@ -43,12 +43,13 @@ namespace Script.UI.Panels
         // 이미지 → 수치·그래프)를 따르되, ExamResult(검사 결과)는 기획서의 4대 분류엔 없는
         // 별도 폴더라 문서 바로 뒤에 배치(사용자 요청: "문서에 넣지 말고 검사 결과 폴더를
         // 따로 만들어달라"). Incident(사고 기록, 6단계)는 검사 결과와 개념적으로 가까운
-        // "사건의 기록"이라 그 바로 뒤에 배치.
+        // "사건의 기록"이라 그 바로 뒤에 배치. 원래 있던 "음성"(Audio) 폴더는 사용자 지시
+        // (2026-07-24) "수치그래프와 음성을 따로 두지 말고 하나로 합쳐"에 따라 제거하고
+        // Numeric 폴더 하나로 통합했다(확장 기획 문서 2.3.2).
         private static readonly CaseFileEntryType[] FolderOrder =
         {
             CaseFileEntryType.Document, CaseFileEntryType.ExamResult, CaseFileEntryType.Incident,
-            CaseFileEntryType.Dialogue, CaseFileEntryType.Audio, CaseFileEntryType.Image,
-            CaseFileEntryType.Numeric
+            CaseFileEntryType.Dialogue, CaseFileEntryType.Image, CaseFileEntryType.Numeric
         };
 
         // 최근 항목이 위로 오도록 항상 리스트 맨 앞에 꽂는다(구현 계획.md Stage 3 7번 항목).
@@ -244,9 +245,10 @@ namespace Script.UI.Panels
             relay.onClick = onClick;
         }
 
-        // 실제 파일 탐색기 느낌을 내려고 유형에 맞는 확장자를 붙인다 - 지금 실제로 만들어지는
-        // 자료는 Document/ExamResult/Dialogue(전부 텍스트)뿐이라 .txt만 붙고, 나머지 유형은 그
-        // 콘텐츠를 만드는 시스템(녹음/촬영)이 생기기 전까지 확장자 없이 표시된다.
+        // 실제 파일 탐색기 느낌을 내려고 유형에 맞는 확장자를 붙인다 - Document/ExamResult/
+        // Dialogue/Incident는 순수 텍스트라 .txt를 붙이고, Image/Numeric은 확장 기획
+        // 문서 파트 A(2026-07-24) 이후 콘텐츠는 있지만(ASCII 그래프+요약 태그) "일반 문서와는
+        // 다른 형태"라는 시각적 구분을 위해 의도적으로 확장자를 안 붙인다.
         private static string FileName(CaseFileEntry entry)
         {
             return IsTextEntry(entry) ? $"{entry.title}.txt" : entry.title;
@@ -268,20 +270,22 @@ namespace Script.UI.Panels
                 case CaseFileEntryType.ExamResult: return "검사 결과";
                 case CaseFileEntryType.Incident: return "사고 기록";
                 case CaseFileEntryType.Dialogue: return "대화 로그";
-                case CaseFileEntryType.Audio: return "음성";
                 case CaseFileEntryType.Image: return "이미지";
                 case CaseFileEntryType.Numeric: return "수치·그래프";
                 default: return type.ToString();
             }
         }
 
+        // 확장 기획(자료 생성계 정규화, 2026-07-24) 이전에는 Image/Numeric 타입이
+        // 콘텐츠를 만드는 시스템이 없어 "미지원" 안내로 막아뒀지만, 이제 ExamService가 이
+        // 두 타입도 실제 텍스트 콘텐츠(ASCII 그래프 + 요약 태그)를 채워 넣으므로 더 이상
+        // 타입으로 열람을 막을 이유가 없다 - 모든 타입을 동일하게 content 그대로 보여준다.
         private void OpenEntry(CaseFileEntry entry)
         {
             var popup = _uiManager != null ? _uiManager.SpawnNotepadPopup() : null;
             if (popup == null) return;
 
-            var content = IsTextEntry(entry) ? entry.content : "이 파일 형식은 아직 열람을 지원하지 않습니다.";
-            popup.Open(FileName(entry), content);
+            popup.Open(FileName(entry), entry.content);
         }
     }
 }

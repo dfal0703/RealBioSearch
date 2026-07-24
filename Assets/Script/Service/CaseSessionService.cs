@@ -152,7 +152,7 @@ namespace Script.Service
         // 이 세션(CurrentCase.Data, 메모리)에만 존재하고 에디터를 다시 플레이하면 사라진다 -
         // 실제 저장이 필요해지면(플레이어블 빌드 단계) 여기 SaveData 호출을 되살리면 된다.
         public UniTask AddLibraryEntry(CaseFileEntryType type, string title, string content, string subfolder = "",
-            bool highlight = false)
+            bool highlight = false, float[] seriesData = null, string[] summaryTags = null)
         {
             if (CurrentCase == null) return UniTask.CompletedTask;
 
@@ -164,7 +164,12 @@ namespace Script.Service
                 content = content,
                 timestamp = DateTime.Now.ToString("HH:mm:ss"),
                 subfolder = subfolder ?? "",
-                isHighlighted = highlight
+                isHighlighted = highlight,
+                // 확장 기획(자료 생성계 정규화, 2026-07-24) - ExamService의 원자료 생성 경로만
+                // 이 두 값을 채워서 넘긴다. 기존 호출부(진단 보고서/대화 로그/검사 결과 요약
+                // 텍스트/사고 기록)는 인자를 안 넘기므로 그대로 빈 배열 - 하위 호환.
+                seriesData = seriesData ?? Array.Empty<float>(),
+                summaryTags = summaryTags ?? Array.Empty<string>()
             };
 
             CurrentCase.Data.library.Add(entry);

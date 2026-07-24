@@ -35,6 +35,11 @@ namespace Script.Room
         private static readonly Color StepDoneColor = new Color(0.2f, 0.7f, 0.25f, 1f);
         private static readonly Color ResolvedColor = new Color(0.15f, 0.4f, 0.15f, 1f);
 
+        // 사용자 요청(2026-07-24) "대응 실패는 검사 실패와 동일한 리스크" - 10초 안에 못
+        // 끝내 강제 실패 처리된 뒤에는 더 이상 손쓸 수 없다는 걸 색으로도 보여준다(꺼진
+        // 잿빛 - 초록/빨강 둘 다와 구분되는 "게임 오버" 느낌).
+        private static readonly Color FailedColor = new Color(0.25f, 0.2f, 0.2f, 1f);
+
         private MutationService _mutationService;
         private CaseSessionService _caseSessionService;
         private Camera mainCamera;
@@ -69,6 +74,7 @@ namespace Script.Room
             _caseSessionService = caseSessionService;
             _mutationService.IsMutated.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.IsResolved.Subscribe(_ => Refresh()).AddTo(disposables);
+            _mutationService.ResponseFailed.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.EmergencyStepsCompleted.Subscribe(_ => Refresh()).AddTo(disposables);
             Refresh();
         }
@@ -107,6 +113,14 @@ namespace Script.Room
         {
             if (_mutationService.IsResolved.CurrentValue) return;
 
+            // 사용자 요청(2026-07-24) "대응 실패는 검사 실패와 동일한 리스크" - 10초 제한
+            // 시간을 넘겨 이미 실패 처리된 뒤에는 버튼을 눌러도 되돌릴 수 없다.
+            if (_mutationService.ResponseFailed.CurrentValue)
+            {
+                _caseSessionService?.Log("[계기판] 이미 대응 시간이 초과되어 조작할 수 없습니다.");
+                return;
+            }
+
             if (!_mutationService.IsMutated.CurrentValue)
             {
                 _caseSessionService?.Log("[계기판] 특별한 이상이 감지되지 않아 별도 조치가 필요하지 않습니다.");
@@ -126,7 +140,11 @@ namespace Script.Room
                 if (indicator == null) continue;
 
                 Color color;
-                if (_mutationService.IsResolved.CurrentValue)
+                if (_mutationService.ResponseFailed.CurrentValue)
+                {
+                    color = FailedColor;
+                }
+                else if (_mutationService.IsResolved.CurrentValue)
                 {
                     color = ResolvedColor;
                 }

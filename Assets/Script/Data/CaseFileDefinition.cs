@@ -24,6 +24,13 @@ namespace Script.Data
         public string organ;
         public string method;
         public string result;
+
+        // 확장 기획(자료 생성계 정규화, 2026-07-24) - Audio/Numeric/Image 원자료 그래프의
+        // 기준값. 저작자가 사례를 만들 때 이 값을 채워두면 ExamService가 강도(intensity)에
+        // 비례하는 배율만 곱해 그대로 사용한다(그래프 "모양"은 정답 근거이므로 실행마다
+        // 랜덤하게 바뀌면 안 됨). 비워두면(길이 0) ExamService가 결정론적 노이즈로 채운
+        // 평탄한 기준선을 대신 사용한다.
+        public float[] seriesBaseline = new float[0];
     }
 
     // 튜토리얼 사례 1건의 "정답지" - 감염 여부/부위 같은 숨겨진 채점 기준. CaseFile과 달리

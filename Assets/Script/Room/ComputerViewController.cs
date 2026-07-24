@@ -1,6 +1,8 @@
 using DG.Tweening;
 using Haare.Client.Routine;
 using Haare.Client.UI;
+using R3;
+using Script.Service;
 using Script.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -50,6 +52,28 @@ namespace Script.Room
         private Camera mainCamera;
         private int screenLayerMask;
 
+        // 사용자 요청(2026-07-24): "비상 대응 발생시, 컴퓨터 화면 매터리얼 전체를 빨간색으로
+        // 깜빡거리게 해줘" - SubjectMonitorPanel은 렌더텍스처 "안" 좌측 상단 패널 색만 바꾸는
+        // 정적인 경고라 컴퓨터 시점(W)이 아니면 안 보인다. 이건 화면 메쉬(screenON) 자체의
+        // 머티리얼을 깜빡이게 해서, 방의 어느 시점(A/D/S)에서 봐도 비상 상황이 물리적으로
+        // 눈에 띄게 만든다.
+        private Material screenMaterial;
+        private MutationService _mutationService;
+        private bool _flashResetDone = true;
+
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private static readonly Color EmergencyFlashColor = new Color(1f, 0.1f, 0.1f, 1f);
+        private const float EmergencyFlashSpeed = 4f;
+
+        // 사용자 요청(2026-07-24): "다소 불안정 상태에서도, 아주 느린 간격으로(5초) 화면
+        // 빨간색으로 깜빡거리게 해줘" - 완전한 변이 전 전조 단계(AgitationLevel.Tense/
+        // Critical)에서도 은은하게 암시하되, 완전 변이의 빠른 깜빡임과는 확실히 다른 "아주
+        // 느린" 속도로 구분한다. Mathf.PingPong(t, 1) 한 사이클(0->1->0)의 주기는
+        // 2/speed이므로, 5초 주기를 원하면 speed = 2/5.
+        private const float TenseFlashPeriodSeconds = 5f;
+        private const float TenseFlashSpeed = 2f / TenseFlashPeriodSeconds;
+
         private ViewPoint currentPoint = ViewPoint.Center;
         private Sequence activeTransition;
         private RenderTexture screenRT;
@@ -76,9 +100,23 @@ namespace Script.Room
         // SceneUIManager 타입으로 주입받아 Canvas만 꺼내 쓴다 - 캔버스를 여기서 또 Instantiate하면
         // 인스턴스가 두 개가 되어버린다.
         [Inject]
-        private void Construct(SceneUIManager sceneUiManager)
+        private void Construct(SceneUIManager sceneUiManager, MutationService mutationService)
         {
             computerCanvas = sceneUiManager.GetComponent<Canvas>();
+
+            // EmergencyPanelController.Construct()와 같은 이유 - 값이 채워지는 시점에 바로
+            // 구독해야 이미 지나간 상태 변화를 놓치지 않는다. 실제 색 갱신은 매 프레임 필요한
+            // 애니메이션(깜빡임)이라 UpdateProcess()의 UpdateEmergencyFlash()에서 수행하고,
+            // 여기서는 IsResolved로 돌아왔을 때 화면을 즉시 원래 색으로 복원하는 것만 담당한다.
+            _mutationService = mutationService;
+            _mutationService.IsResolved.Subscribe(resolved =>
+            {
+                if (resolved) ApplyScreenTint(Color.white);
+            }).AddTo(disposables);
+            _mutationService.ResponseFailed.Subscribe(failed =>
+            {
+                if (failed) ApplyScreenTint(Color.white);
+            }).AddTo(disposables);
         }
 
         protected override void Constructor()
@@ -116,6 +154,7 @@ namespace Script.Room
                 mat.SetTexture("_BaseMap", screenRT);
                 mat.SetTexture("_EmissionMap", screenRT);
                 mat.SetTexture("_MainTex", screenRT);
+                screenMaterial = mat;
             }
 
             // 카메라를 바꾸지 않으므로 캔버스는 항상 ScreenSpaceCamera + ComputerScreenCamera로 고정.
@@ -204,6 +243,10 @@ namespace Script.Room
 
         protected override void UpdateProcess()
         {
+            // 카메라 시점(WASD)이나 전환 상태와 무관하게 항상 갱신 - 계기판(A 시점)을 보고
+            // 있어도 화면 메쉬가 붉게 깜빡이는 게 보여야 "물리적으로 눈에 띄는" 경고가 된다.
+            UpdateEmergencyFlash();
+
             // 사용자 요청: 카메라가 시점 전환 중일 때는 어떤 입력도 받지 않는다 - WASD로 새
             // 전환을 또 걸거나 화면을 클릭하는 걸 막는다.
             if (IsTransitioning) return;
@@ -401,6 +444,62 @@ namespace Script.Room
 
                 pressedObject = null;
             }
+        }
+
+        // 세 단계로 나뉜다 - (1) 완전 변이(IsMutated && !IsResolved): 빠른 깜빡임(기존 그대로).
+        // (2) 전조 단계(Agitation.Tense/Critical, 아직 변이 전): 아주 느린(5초 주기) 깜빡임 -
+        // 사용자 요청 "다소 불안정 상태에서도, 아주 느린 간격으로(5초) 화면 빨간색으로
+        // 깜빡거리게 해줘". (3) 그 외(Calm 또는 사고 종료 후): 원래 화면으로 복원하고 더
+        // 이상 매 프레임 머티리얼을 건드리지 않는다(_flashResetDone 가드).
+        private void UpdateEmergencyFlash()
+        {
+            if (screenMaterial == null || _mutationService == null) return;
+
+            var mutated = _mutationService.IsMutated.CurrentValue;
+            var resolved = _mutationService.IsResolved.CurrentValue;
+            // 사용자 요청(2026-07-24) "대응 실패는 검사 실패와 동일한 리스크" - 10초 제한
+            // 시간을 넘겨 실패 처리된 뒤에도 resolved와 마찬가지로 사례가 끝난 상태이므로
+            // 더 이상 깜빡일 이유가 없다.
+            var ended = resolved || _mutationService.ResponseFailed.CurrentValue;
+
+            if (mutated && !ended)
+            {
+                _flashResetDone = false;
+                // Mathf.PingPong으로 0<->1을 삼각파로 오가며 원래 화면(흰색 틴트=RT 그대로)과
+                // 경고색 사이를 보간한다 - 딱딱 끊기는 On/Off보다 부드럽게 깜빡이면서도 충분히
+                // 눈에 띈다.
+                var t = Mathf.PingPong(Time.time * EmergencyFlashSpeed, 1f);
+                ApplyScreenTint(Color.Lerp(Color.white, EmergencyFlashColor, t));
+                return;
+            }
+
+            // 사고가 이미 끝났으면(resolved 또는 실패) 자극도 값이 남아있어도 전조 깜빡임을
+            // 켜지 않는다 - 위기가 끝난 뒤에도 화면이 계속 깜빡이면 "아직도 위험하다"는
+            // 잘못된 신호가 된다.
+            var agitation = !ended ? _mutationService.Agitation.CurrentValue : AgitationLevel.Calm;
+            if (agitation != AgitationLevel.Calm)
+            {
+                _flashResetDone = false;
+                var t = Mathf.PingPong(Time.time * TenseFlashSpeed, 1f);
+                ApplyScreenTint(Color.Lerp(Color.white, EmergencyFlashColor, t));
+                return;
+            }
+
+            if (!_flashResetDone)
+            {
+                ApplyScreenTint(Color.white);
+                _flashResetDone = true;
+            }
+        }
+
+        // 파이프라인에 따라 URP는 "_BaseColor", 빌트인/레거시 셰이더는 "_Color"를 쓴다 -
+        // Constructor()가 "_BaseMap"/"_MainTex"를 둘 다 채워두는 것과 같은 방어적 이유로,
+        // 있는 프로퍼티만 골라서 설정한다.
+        private void ApplyScreenTint(Color color)
+        {
+            if (screenMaterial == null) return;
+            if (screenMaterial.HasProperty(BaseColorId)) screenMaterial.SetColor(BaseColorId, color);
+            if (screenMaterial.HasProperty(ColorId)) screenMaterial.SetColor(ColorId, color);
         }
 
         private void OnDestroy()

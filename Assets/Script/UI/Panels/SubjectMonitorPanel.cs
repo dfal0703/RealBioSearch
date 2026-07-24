@@ -43,6 +43,7 @@ namespace Script.UI.Panels
 
             _mutationService.IsMutated.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.IsResolved.Subscribe(_ => Refresh()).AddTo(disposables);
+            _mutationService.ResponseFailed.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.EmergencyStepsCompleted.Subscribe(_ => Refresh()).AddTo(disposables);
             _mutationService.Agitation.Subscribe(_ => Refresh()).AddTo(disposables);
             Refresh();
@@ -52,11 +53,12 @@ namespace Script.UI.Panels
         {
             var mutated = _mutationService.IsMutated.CurrentValue;
             var resolved = _mutationService.IsResolved.CurrentValue;
+            var failed = _mutationService.ResponseFailed.CurrentValue;
             var agitation = _mutationService.Agitation.CurrentValue;
 
             if (screenImage != null)
             {
-                screenImage.color = mutated
+                screenImage.color = mutated || failed
                     ? MutatedScreenColor
                     : agitation switch
                     {
@@ -77,19 +79,24 @@ namespace Script.UI.Panels
                 // "⚠"은 NEXONLv1GothicBold SDF 폰트 애셋에 그 글리프가 없어서 네모(tofu)로
                 // 깨져 보인다("▾" 화살표가 Stage 1에서 같은 이유로 깨졌던 것과 동일한 문제) -
                 // 폰트에 이미 있는 대괄호 표기로 대체.
-                statusLabel.text = resolved
-                    ? "사고 종료"
-                    : mutated
-                        ? $"<color=#FF4444>[경고] 변이 감지 - 계기판에서 비상 대응하십시오 ({step}/{total})</color>"
-                        : agitation switch
-                        {
-                            // 임계치를 넘기 전 단계적 전조 - 개발 구현 지시서 8장 완료 기준
-                            // "위험의 전조를 인식"을 충족시키는 부분(기획 대조 문서 15장
-                            // 우선순위 1위 gap).
-                            AgitationLevel.Critical => "<color=#FF8844>[경고] 검사체 반응이 극도로 불안정합니다</color>",
-                            AgitationLevel.Tense => "<color=#DDCC66>[관찰] 검사체 반응이 다소 불안정합니다</color>",
-                            _ => "NO SIGNAL"
-                        };
+                statusLabel.text = failed
+                    // 사용자 요청(2026-07-24): "대응 실패는 검사 실패와 동일한 리스크" -
+                    // FinalReportPanel의 "판정 오류" 표기와 같은 색(#DD6644)을 그대로 써서
+                    // 같은 등급의 실패임을 시각적으로도 통일한다.
+                    ? "<color=#DD6644>[실패] 비상 대응 시간 초과 - 사례가 실패로 종료되었습니다</color>"
+                    : resolved
+                        ? "사고 종료"
+                        : mutated
+                            ? $"<color=#FF4444>[경고] 변이 감지 - 계기판에서 비상 대응하십시오 ({step}/{total})</color>"
+                            : agitation switch
+                            {
+                                // 임계치를 넘기 전 단계적 전조 - 개발 구현 지시서 8장 완료 기준
+                                // "위험의 전조를 인식"을 충족시키는 부분(기획 대조 문서 15장
+                                // 우선순위 1위 gap).
+                                AgitationLevel.Critical => "<color=#FF8844>[경고] 검사체 반응이 극도로 불안정합니다</color>",
+                                AgitationLevel.Tense => "<color=#DDCC66>[관찰] 검사체 반응이 다소 불안정합니다</color>",
+                                _ => "NO SIGNAL"
+                            };
             }
         }
     }

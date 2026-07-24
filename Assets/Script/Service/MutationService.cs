@@ -3,6 +3,8 @@ using Cysharp.Threading.Tasks;
 using Haare.Client.Routine;
 using R3;
 using Script.Data;
+using Script.UI;
+using UnityEngine;
 using VContainer;
 
 namespace Script.Service
@@ -70,6 +72,19 @@ namespace Script.Service
 
         public ReactiveProperty<bool> IsMutated { get; } = new ReactiveProperty<bool>(false);
         public ReactiveProperty<bool> IsResolved { get; } = new ReactiveProperty<bool>(false);
+
+        // 사용자 요청(2026-07-24): "비상 대응 로직 시에는 카메라 UI에서 오른쪽 위에 10초짜리
+        // 타이머를 주고, 10초 경과시, 대응 실패로 처리해줘". SubjectMonitorPanel이 이 값을
+        // 구독해서 카운트다운 숫자를 표시한다.
+        public const float EmergencyResponseTimeLimit = 10f;
+
+        public ReactiveProperty<float> EmergencyResponseSecondsRemaining { get; } =
+            new ReactiveProperty<float>(EmergencyResponseTimeLimit);
+
+        // 10초 안에 4단계를 못 끝내 강제로 실패 처리됐는지 - IsResolved(성공적으로 끝냄)와는
+        // 별개 상태다. EmergencyPanelController/ComputerViewController가 이 값이 true가 되면
+        // 더 이상 클릭/깜빡임에 반응하지 않도록 게이트로 함께 쓴다.
+        public ReactiveProperty<bool> ResponseFailed { get; } = new ReactiveProperty<bool>(false);
 
         // 변이 전 전조 단계 - SubjectMonitorPanel이 구독해서 화면 색/문구를 단계별로 미리
         // 바꾼다. 자극도 자체는 여전히 숫자로 노출 안 함(이 프로퍼티는 3단계 구간만 알려줌).
@@ -140,7 +155,57 @@ namespace Script.Service
         private void TriggerMutation()
         {
             IsMutated.Value = true;
+            EmergencyResponseSecondsRemaining.Value = EmergencyResponseTimeLimit;
             _caseSessionService?.Log("[경고] 검사체가 기생체 자극으로 변이했습니다! 즉시 비상 대응이 필요합니다.");
+        }
+
+        // 변이 발생 후 4단계를 전부 끝내기 전까지만 카운트다운한다 - 성공(IsResolved)이나
+        // 이미 실패 처리(ResponseFailed)됐으면 더 셀 이유가 없다. EmergencyResponseSignal
+        // (Script.UI, 정적 브릿지)도 매 프레임 같이 갱신한다 - CoreCanvas의
+        // EmergencyTimerHintController(전역 UI, ssh 씬 DI 그래프 밖)가 이 서비스를 직접
+        // 주입받을 수 없어서(CliInputFocus와 같은 스코프 문제) 폴링으로 상태를 읽어간다.
+        public override void UpdateProcess()
+        {
+            base.UpdateProcess();
+
+            var active = IsMutated.CurrentValue && !IsResolved.CurrentValue && !ResponseFailed.CurrentValue;
+            EmergencyResponseSignal.Active = active;
+
+            if (!active) return;
+
+            var remaining = EmergencyResponseSecondsRemaining.CurrentValue - Time.deltaTime;
+            if (remaining <= 0f)
+            {
+                EmergencyResponseSecondsRemaining.Value = 0f;
+                EmergencyResponseSignal.SecondsRemaining = 0f;
+                FailEmergencyResponse().Forget();
+                return;
+            }
+
+            EmergencyResponseSecondsRemaining.Value = remaining;
+            EmergencyResponseSignal.SecondsRemaining = remaining;
+        }
+
+        // 10초 안에 4단계를 전부 못 끝내면 "대응 실패"로 처리한다. 사용자 지시: "대응 실패는
+        // 검사 실패와 동일한 리스크" - FinalReportPanel이 오답 제출 시 보여주는 "판정 오류"와
+        // 같은 실패 등급으로 사례를 강제 종료한다(4단계를 제때 완료했을 때의 중립적인 "강제
+        // 종료" 문구와는 구분되는, 명백한 실패 결과).
+        private async UniTask FailEmergencyResponse()
+        {
+            if (ResponseFailed.CurrentValue) return;
+            ResponseFailed.Value = true;
+
+            var d = _caseSessionService.CurrentCase?.Data;
+            var report = $"사례 {d?.caseId} ({d?.subjectName}) - 비상 대응 제한 시간(10초) 초과로 대응 실패.\n" +
+                         $"변이 직전 마지막 검사: {_lastOrgan} - {_lastMethod} (강도: {_lastIntensity})\n" +
+                         $"완료된 절차: {EmergencyStepsCompleted.CurrentValue}/{EmergencyStepNames.Length}건 - " +
+                         "시간 초과로 나머지 미완료.";
+
+            await _caseSessionService.AddLibraryEntry(CaseFileEntryType.Incident, "사고 기록", report);
+            await _caseSessionService.CompleteCase(
+                "<color=#DD6644>판정 오류</color> - 비상 대응 시간 초과로 실패 처리됨(검사 실패와 동일하게 처리).");
+
+            _caseSessionService.Log("[비상 대응 실패] 10초 안에 대응하지 못해 사례가 실패로 종료되었습니다.");
         }
 
         public bool IsStepCompleted(int stepIndex)
@@ -155,7 +220,7 @@ namespace Script.Service
         // 만든다)까지 이어진다.
         public async UniTask CompleteEmergencyStep(int stepIndex)
         {
-            if (!IsMutated.CurrentValue || IsResolved.CurrentValue) return;
+            if (!IsMutated.CurrentValue || IsResolved.CurrentValue || ResponseFailed.CurrentValue) return;
             if (stepIndex < 0 || stepIndex >= EmergencyStepNames.Length) return;
             if (_stepCompleted[stepIndex]) return;
 
